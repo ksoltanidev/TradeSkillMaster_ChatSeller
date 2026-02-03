@@ -1,0 +1,10 @@
+## Interface: 30300
+## Title: |cff00ff00TradeSkillMaster_ChatSeller|r
+## Notes: Chat-based selling automation module for TSM.
+## Author: Gemlatune
+## Version: 1.0
+## Dependencies: TradeSkillMaster
+## SavedVariables: AscensionTSM_ChatSellerDB
+
+Locale\enUS.lua
+TradeSkillMaster_ChatSeller.lua
