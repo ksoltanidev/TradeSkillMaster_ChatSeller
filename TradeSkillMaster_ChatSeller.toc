@@ -2,9 +2,29 @@
 ## Title: |cff00ff00TradeSkillMaster_ChatSeller|r
 ## Notes: Chat-based selling automation module for TSM.
 ## Author: Gemlatune
-## Version: 1.0
+## Version: 1.1
 ## Dependencies: TradeSkillMaster
 ## SavedVariables: AscensionTSM_ChatSellerDB
 
+# Localization
 Locale\enUS.lua
-TradeSkillMaster_ChatSeller.lua
+
+# Core
+Core.lua
+
+# Modules
+Modules\ChatHandler.lua
+Modules\Options.lua
+
+# Features - Prices
+Features\Prices\Prices.lua
+Features\Prices\PricesTab.lua
+
+# Features - Gears
+Features\Gears\GearsData.lua
+Features\Gears\Gears.lua
+Features\Gears\GearsTab.lua
+
+# Features - Transmogs
+Features\Transmogs\Transmogs.lua
+Features\Transmogs\TransmogsTab.lua

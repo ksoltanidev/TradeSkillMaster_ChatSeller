@@ -1,0 +1,167 @@
+-- ------------------------------------------------------------------------------------- --
+-- TradeSkillMaster_ChatSeller - Core
+-- Chat-based selling automation module for TSM
+-- ------------------------------------------------------------------------------------- --
+
+-- Initialize addon namespace
+local TSM = select(2, ...)
+TSM = LibStub("AceAddon-3.0"):NewAddon(TSM, "TSM_ChatSeller", "AceEvent-3.0", "AceConsole-3.0")
+
+-- Expose globally for other addons (e.g., AuctionsTab integration)
+TSM_ChatSeller = TSM
+
+-- Localization
+local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ChatSeller")
+
+-- ===================================================================================== --
+-- Default Saved Variables
+-- ===================================================================================== --
+
+local savedDBDefaults = {
+    profile = {
+        commandPrefix = "gem",  -- Global command prefix for all features
+        prices = {
+            enabled = true,     -- Enable/disable price lookup feature
+        },
+        gears = {
+            enabled = true,     -- Enable/disable gear lookup feature
+            itemList = {},      -- {link, price, name, equipLoc, itemClass, itemSubClass, source}
+        },
+    },
+}
+
+-- ===================================================================================== --
+-- Addon Lifecycle
+-- ===================================================================================== --
+
+function TSM:OnInitialize()
+    -- Initialize saved variables database
+    TSM.db = LibStub("AceDB-3.0"):New("AscensionTSM_ChatSellerDB", savedDBDefaults, true)
+
+    -- Make module references accessible on TSM object
+    for moduleName, module in pairs(TSM.modules) do
+        TSM[moduleName] = module
+    end
+
+    -- Register with TSM
+    TSM:RegisterModule()
+end
+
+function TSM:OnEnable()
+    -- Register whisper event listener
+    self:RegisterEvent("CHAT_MSG_WHISPER")
+end
+
+function TSM:OnDisable()
+    -- Unregister events
+    self:UnregisterEvent("CHAT_MSG_WHISPER")
+end
+
+-- ===================================================================================== --
+-- TSM Module Registration
+-- ===================================================================================== --
+
+function TSM:RegisterModule()
+    TSM.icons = {
+        {
+            side = "module",
+            desc = "ChatSeller",
+            slashCommand = "chatseller",
+            callback = "Options:Load",
+            icon = "Interface\\Icons\\INV_Misc_Note_01",
+        },
+    }
+
+    TSM.slashCommands = {
+        {
+            key = "chatseller",
+            label = L["Opens the TSM window to the ChatSeller page"],
+            callback = function()
+                TSMAPI:OpenFrame()
+                TSMAPI:SelectIcon("TSM_ChatSeller", "ChatSeller")
+            end
+        },
+    }
+
+    TSMAPI:NewModule(TSM)
+end
+
+-- ===================================================================================== --
+-- Shared Utilities
+-- ===================================================================================== --
+
+-- Format money for chat (gold/silver/copper without color codes)
+function TSM:FormatMoneyForChat(money)
+    if not money or money == 0 then return nil end
+
+    local gold = math.floor(money / 10000)
+    local silver = math.floor((money % 10000) / 100)
+    local copper = money % 100
+
+    if gold > 0 then
+        return format("%dg %ds %dc", gold, silver, copper)
+    elseif silver > 0 then
+        return format("%ds %dc", silver, copper)
+    else
+        return format("%dc", copper)
+    end
+end
+
+-- ===================================================================================== --
+-- External Integration API
+-- ===================================================================================== --
+
+-- Sync gear items from AuctionsTab
+-- Removes all items with source="AuctionsTab" then adds new items from the provided list
+-- @param items: table of {link, price, name} from AuctionsTab
+-- @return number of items added, number of items removed
+function TSM:SyncFromAuctionsTab(items)
+    if not items or #items == 0 then
+        return 0
+    end
+
+    local gearList = TSM.db.profile.gears.itemList
+    local GearsData = TSM.GearsData
+
+    -- Step 1: Remove all items with source="AuctionsTab"
+    local removed = 0
+    for i = #gearList, 1, -1 do
+        if gearList[i].source == "AuctionsTab" then
+            tremove(gearList, i)
+            removed = removed + 1
+        end
+    end
+
+    -- Step 2: Add new items (only equippable gear)
+    local added = 0
+    for _, item in ipairs(items) do
+        local name, itemLink, _, _, _, itemClass, itemSubClass, _, equipLoc = GetItemInfo(item.link)
+
+        -- Skip if item not cached or not equippable gear
+        if name and equipLoc and equipLoc ~= "" and GearsData.VALID_EQUIP_LOCS[equipLoc] then
+            -- Check for duplicates (by name, excluding AuctionsTab source items we just removed)
+            local isDuplicate = false
+            for _, existing in ipairs(gearList) do
+                if existing.name == name then
+                    isDuplicate = true
+                    break
+                end
+            end
+
+            if not isDuplicate then
+                tinsert(gearList, {
+                    link = itemLink,
+                    price = item.price,
+                    name = name,
+                    equipLoc = equipLoc,
+                    itemClass = itemClass,
+                    itemSubClass = itemSubClass,
+                    source = "AuctionsTab",
+                })
+                added = added + 1
+            end
+        end
+    end
+
+    return added, removed
+end
