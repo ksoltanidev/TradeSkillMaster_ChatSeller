@@ -13,12 +13,18 @@ local GD = TSM.GearsData
 -- Argument Parsing
 -- ===================================================================================== --
 
+-- Hand filter keywords (1h, 2h, mh, oh) - treated separately from weapon type
+local HAND_FILTERS = {
+    ["1h"] = true, ["2h"] = true, mh = true, oh = true,
+}
+
 -- Parse gear command arguments into structured filters
 -- Supports flexible order: "cloth head lvl 10-50 str" = "str lvl 10-50 cloth head"
 function TSM:ParseGearArguments(args)
     local filters = {
         category = nil,
         subcategory = nil,
+        handFilter = nil,   -- 1h, 2h, mh, oh (separate from weapon type)
         minLevel = nil,
         maxLevel = nil,
         minILevel = nil,
@@ -120,10 +126,20 @@ function TSM:ParseGearArguments(args)
             -- Try weapon subcategory first
             local weaponSubcat = GD.WEAPON_SUBCATEGORY_ALIASES[word]
             if weaponSubcat then
-                filters.subcategory = weaponSubcat
-                -- If no category set and it's a weapon subcategory, imply weapon category
-                if not filters.category then
-                    filters.category = "weapon"
+                -- Check if it's a hand filter (1h, 2h, mh, oh)
+                if HAND_FILTERS[weaponSubcat] then
+                    filters.handFilter = weaponSubcat
+                    -- If no category set, imply weapon category
+                    if not filters.category then
+                        filters.category = "weapon"
+                    end
+                else
+                    -- It's a weapon type (sword, axe, etc.)
+                    filters.subcategory = weaponSubcat
+                    -- If no category set and it's a weapon subcategory, imply weapon category
+                    if not filters.category then
+                        filters.category = "weapon"
+                    end
                 end
                 consumed = true
             else
@@ -266,6 +282,27 @@ function TSM:ItemMatchesFilter(item, filters)
         end
     end
 
+    -- Check hand filter (1h, 2h, mh, oh) - separate from weapon type
+    if filters.handFilter then
+        local handFilterDef = GD.WEAPON_FILTERS[filters.handFilter]
+        if handFilterDef then
+            if handFilterDef.equipLoc then
+                if item.equipLoc ~= handFilterDef.equipLoc then
+                    return false
+                end
+            elseif handFilterDef.equipLocs then
+                local matched = false
+                for _, loc in ipairs(handFilterDef.equipLocs) do
+                    if item.equipLoc == loc then
+                        matched = true
+                        break
+                    end
+                end
+                if not matched then return false end
+            end
+        end
+    end
+
     -- Check required level filter
     if filters.minLevel or filters.maxLevel then
         local itemReqLevel = item.reqLevel or 0
@@ -340,19 +377,37 @@ function TSM:GetSlotDisplayName(equipLoc)
     return GD.SLOT_DISPLAY_NAMES[equipLoc]
 end
 
+-- Learn more about filtering items
+function TSM:SendGearLearnFilterHelpMessage(sender)
+    local prefix = TSM.db.profile.commandPrefix or ""
+    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+    SendChatMessage("==> Learn more about filtering items by sending 'gear filters'", "WHISPER", nil, sender)
+end
+
 -- Send help message for gear command
 function TSM:SendGearHelpMessage(sender)
     local prefix = TSM.db.profile.commandPrefix or ""
     local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
-    SendChatMessage("Welcome to my Gear Shop - Use the following command:", "WHISPER", nil, sender)
-    SendChatMessage(cmdPrefix .. "gear (category) (subcategory) (filters)", "WHISPER", nil, sender)
+    SendChatMessage("Greetings my friend, welcome to the Gear Shop. Here, you can browse through items I sell using chat messages", "WHISPER", nil, sender)
+    SendChatMessage("How does it work ? just send me a message like this: '" .. cmdPrefix .. "gear [category] [optional subcategory] [optional filters]'", "WHISPER", nil, sender)
     SendChatMessage("Categories - cloth, leather, mail, plate, back, neck, ring, trinket, weapon", "WHISPER", nil, sender)
-    SendChatMessage("Armor slots - head, shoulders, chest, wrist, gloves, waist, legs, feet", "WHISPER", nil, sender)
-    SendChatMessage("Weapons - sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, shield", "WHISPER", nil, sender)
-    SendChatMessage("Level filters - lvl 10-50, minlvl 10, maxlvl 50", "WHISPER", nil, sender)
-    SendChatMessage("Item level - ilvl 200-300, minilvl 200, maxilvl 300", "WHISPER", nil, sender)
+    SendChatMessage("Armor subcategories - head, shoulders, chest, wrist, gloves, waist, legs, feet", "WHISPER", nil, sender)
+    SendChatMessage("Weapons subcategories - sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, shield", "WHISPER", nil, sender)
+    SendChatMessage("Example: '" .. cmdPrefix .. "gear cloth chest'", "WHISPER", nil, sender)
+    TSM:SendGearHelpMessage(sender)
+    SendChatMessage("Accepts EN/FR/ES keywords.", "WHISPER", nil, sender)
+end
+
+-- Send help message for gear command
+function TSM:SendGearFilterHelpMessage(sender)
+    local prefix = TSM.db.profile.commandPrefix or ""
+    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+    SendChatMessage("To filter items, you can use theses filters. You can combine multiples", "WHISPER", nil, sender)
+    SendChatMessage("Level filters - lvl 10-15, minlvl 10, maxlvl 50", "WHISPER", nil, sender)
+    SendChatMessage("Weapon filters - 1h, 2h, mh (main hand), oh (off hand)", "WHISPER", nil, sender)
+    SendChatMessage("Item level - ilvl 40-50, minilvl 50, maxilvl 50", "WHISPER", nil, sender)
     SendChatMessage("Stats - str, agi, int, spi, sta, sp, ap, crit, haste, hit, exp", "WHISPER", nil, sender)
-    SendChatMessage("WotLK stats - mp5, sd (spell dmg), armpen, spellpen, block, parry, dodge, def", "WHISPER", nil, sender)
-    SendChatMessage("Example - " .. cmdPrefix .. "gear plate chest lvl 70-80 str armpen", "WHISPER", nil, sender)
+    SendChatMessage("advanced stats - mp5, sd (spell dmg), armpen, spellpen, block, parry, dodge, def", "WHISPER", nil, sender)
+    SendChatMessage("Example: '" .. cmdPrefix .. "gear sword 2h str armpen'", "WHISPER", nil, sender)
     SendChatMessage("Accepts EN/FR/ES keywords.", "WHISPER", nil, sender)
 end

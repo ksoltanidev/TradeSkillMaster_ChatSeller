@@ -86,6 +86,20 @@ GD.WEAPON_SUBCATEGORY_ALIASES = {
     thrown = "thrown", lance = "thrown", arrojadiza = "thrown",
     -- Shield
     shield = "shield", shields = "shield", bouclier = "shield", escudo = "shield",
+    -- One-hand / Two-hand filters
+    ["1h"] = "1h", onehand = "1h", onehanded = "1h",
+    ["1main"] = "1h", unemain = "1h",       -- FR
+    ["1mano"] = "1h", unamano = "1h",       -- ES
+    ["2h"] = "2h", twohand = "2h", twohanded = "2h",
+    ["2mains"] = "2h", deuxmains = "2h",    -- FR
+    ["2manos"] = "2h", dosmanos = "2h",     -- ES
+    -- Main hand / Off hand filters
+    mh = "mh", mainhand = "mh",
+    mainprinc = "mh",                       -- FR
+    manoprinc = "mh",                       -- ES
+    oh = "oh", offhand = "oh",
+    mainsec = "oh",                         -- FR
+    manosec = "oh",                         -- ES
 }
 
 -- ===================================================================================== --
@@ -132,6 +146,11 @@ GD.WEAPON_FILTERS = {
     wand = { subClass = "Wands" },
     thrown = { subClass = "Thrown" },
     shield = { equipLoc = "INVTYPE_SHIELD" },
+    -- One-hand / Two-hand filters (by equipLoc)
+    ["1h"] = { equipLocs = {"INVTYPE_WEAPON", "INVTYPE_WEAPONMAINHAND", "INVTYPE_WEAPONOFFHAND"} },
+    ["2h"] = { equipLoc = "INVTYPE_2HWEAPON" },
+    mh = { equipLoc = "INVTYPE_WEAPONMAINHAND" },
+    oh = { equipLocs = {"INVTYPE_WEAPONOFFHAND", "INVTYPE_HOLDABLE"} },
 }
 
 -- Equipment locations that indicate a weapon
