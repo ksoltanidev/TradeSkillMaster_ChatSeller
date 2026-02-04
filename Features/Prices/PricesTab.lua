@@ -13,7 +13,8 @@ local Options = TSM:GetModule("Options")
 -- ===================================================================================== --
 
 function Options:LoadPricesTab(container)
-    local prefix = TSM.db.profile.commandPrefix or "gem"
+    local prefix = TSM.db.profile.commandPrefix or ""
+    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
     local page = {
         {
             type = "ScrollFrame",
@@ -41,7 +42,7 @@ function Options:LoadPricesTab(container)
                         },
                         {
                             type = "Label",
-                            text = "  " .. prefix .. " price [item link]",
+                            text = "  " .. cmdPrefix .. "price [item link]",
                             fullWidth = true,
                         },
                         {

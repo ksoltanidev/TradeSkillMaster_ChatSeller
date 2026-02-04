@@ -205,3 +205,162 @@ GD.SLOT_DISPLAY_NAMES = {
     ["INVTYPE_RANGEDRIGHT"] = "Ranged",
     ["INVTYPE_THROWN"] = "Thrown",
 }
+
+-- ===================================================================================== --
+-- Level/iLevel Filter Keywords (Multilingual: EN/FR/ES)
+-- ===================================================================================== --
+
+-- Level filter keywords (required player level)
+GD.LEVEL_KEYWORDS = {
+    -- Range syntax
+    lvl = "level", level = "level",
+    niveau = "level",   -- FR
+    nivel = "level",    -- ES
+    -- Minimum only
+    minlvl = "minlevel", ["min-lvl"] = "minlevel", minlevel = "minlevel",
+    -- Maximum only
+    maxlvl = "maxlevel", ["max-lvl"] = "maxlevel", maxlevel = "maxlevel",
+}
+
+-- Item level filter keywords
+GD.ILVL_KEYWORDS = {
+    -- Range syntax
+    ilvl = "ilvl", itemlevel = "ilvl", ["item-level"] = "ilvl",
+    niveauobjet = "ilvl",   -- FR
+    nivelobj = "ilvl",      -- ES
+    -- Minimum only
+    minilvl = "minilvl", ["min-ilvl"] = "minilvl",
+    -- Maximum only
+    maxilvl = "maxilvl", ["max-ilvl"] = "maxilvl",
+}
+
+-- ===================================================================================== --
+-- Stat Aliases (Multilingual: EN/FR/ES)
+-- ===================================================================================== --
+
+-- Stat aliases -> canonical stat key
+GD.STAT_ALIASES = {
+    -- Strength
+    str = "STRENGTH", strength = "STRENGTH",
+    force = "STRENGTH",     -- FR
+    fuerza = "STRENGTH",    -- ES
+
+    -- Agility
+    agi = "AGILITY", agility = "AGILITY",
+    agilite = "AGILITY",    -- FR
+    agilidad = "AGILITY",   -- ES
+
+    -- Intellect
+    int = "INTELLECT", intellect = "INTELLECT",
+    intelligence = "INTELLECT", -- FR
+    intelecto = "INTELLECT",    -- ES
+
+    -- Spirit
+    spi = "SPIRIT", spirit = "SPIRIT",
+    esprit = "SPIRIT",      -- FR
+    espiritu = "SPIRIT",    -- ES
+
+    -- Stamina
+    sta = "STAMINA", stamina = "STAMINA",
+    endurance = "STAMINA",  -- FR
+    aguante = "STAMINA",    -- ES
+
+    -- Spell Power
+    sp = "SPELL_POWER", spellpower = "SPELL_POWER", ["spell-power"] = "SPELL_POWER",
+    puissancesorts = "SPELL_POWER",     -- FR
+    poderhechizo = "SPELL_POWER",       -- ES
+
+    -- Attack Power
+    ap = "ATTACK_POWER", attackpower = "ATTACK_POWER", ["attack-power"] = "ATTACK_POWER",
+    puissanceattaque = "ATTACK_POWER",  -- FR
+    poderataque = "ATTACK_POWER",       -- ES
+
+    -- Crit
+    crit = "CRIT_RATING", critical = "CRIT_RATING",
+    critique = "CRIT_RATING",   -- FR
+    critico = "CRIT_RATING",    -- ES
+
+    -- Haste
+    haste = "HASTE_RATING",
+    hate = "HASTE_RATING",      -- FR
+    celeridad = "HASTE_RATING", -- ES
+
+    -- Hit
+    hit = "HIT_RATING",
+    toucher = "HIT_RATING",     -- FR
+    golpe = "HIT_RATING",       -- ES
+
+    -- Expertise
+    exp = "EXPERTISE_RATING", expertise = "EXPERTISE_RATING",
+    pericia = "EXPERTISE_RATING",   -- ES
+
+    -- ===================================================================================== --
+    -- WotLK-specific Stats (confirmed on Ascension)
+    -- ===================================================================================== --
+
+    -- MP5 (Mana per 5 seconds)
+    mp5 = "MP5", manaregen = "MP5",
+    mana5 = "MP5",              -- FR/ES
+
+    -- Spell Damage (separate from Spell Power in WotLK)
+    sd = "SPELL_DAMAGE", spelldmg = "SPELL_DAMAGE", spelldamage = "SPELL_DAMAGE",
+    degatsorts = "SPELL_DAMAGE",    -- FR
+    danomagico = "SPELL_DAMAGE",    -- ES
+
+    -- Armor Penetration
+    armpen = "ARMOR_PEN", armorpen = "ARMOR_PEN",
+    penarmure = "ARMOR_PEN",        -- FR
+    penarmadura = "ARMOR_PEN",      -- ES
+
+    -- Spell Penetration
+    spellpen = "SPELL_PEN",
+    pensorts = "SPELL_PEN",         -- FR
+    penhechizo = "SPELL_PEN",       -- ES
+
+    -- Block Rating
+    block = "BLOCK_RATING", bl = "BLOCK_RATING",
+    blocage = "BLOCK_RATING",       -- FR
+    bloqueo = "BLOCK_RATING",       -- ES
+
+    -- Parry Rating
+    parry = "PARRY_RATING",
+    parade = "PARRY_RATING",        -- FR
+    parada = "PARRY_RATING",        -- ES
+
+    -- Dodge Rating
+    dodge = "DODGE_RATING",
+    esquive = "DODGE_RATING",       -- FR
+    esquivar = "DODGE_RATING",      -- ES
+
+    -- Defense Rating
+    def = "DEFENSE_RATING", defense = "DEFENSE_RATING",
+    defensa = "DEFENSE_RATING",     -- ES
+}
+
+-- Maps canonical stat keys to WoW ITEM_MOD_* constants (used by GetItemStats)
+GD.STAT_TO_ITEM_MOD = {
+    -- Base stats
+    STRENGTH = "ITEM_MOD_STRENGTH_SHORT",
+    AGILITY = "ITEM_MOD_AGILITY_SHORT",
+    INTELLECT = "ITEM_MOD_INTELLECT_SHORT",
+    SPIRIT = "ITEM_MOD_SPIRIT_SHORT",
+    STAMINA = "ITEM_MOD_STAMINA_SHORT",
+    -- Offensive ratings
+    SPELL_POWER = "ITEM_MOD_SPELL_POWER_SHORT",
+    ATTACK_POWER = "ITEM_MOD_ATTACK_POWER_SHORT",
+    CRIT_RATING = "ITEM_MOD_CRIT_RATING_SHORT",
+    HASTE_RATING = "ITEM_MOD_HASTE_RATING_SHORT",
+    HIT_RATING = "ITEM_MOD_HIT_RATING_SHORT",
+    EXPERTISE_RATING = "ITEM_MOD_EXPERTISE_RATING_SHORT",
+    -- WotLK-specific stats (confirmed on Ascension)
+    MP5 = "ITEM_MOD_POWER_REGEN0_SHORT",                    -- Confirmed
+    SPELL_DAMAGE = "ITEM_MOD_SPELL_DAMAGE_DONE_SHORT",      -- Confirmed
+    ARMOR_PEN = "ITEM_MOD_ARMOR_PENETRATION_RATING_SHORT",  -- Confirmed
+    -- Defensive ratings (confirmed on Ascension)
+    BLOCK_RATING = "ITEM_MOD_BLOCK_RATING_SHORT",           -- Confirmed
+    PARRY_RATING = "ITEM_MOD_PARRY_RATING_SHORT",           -- Confirmed
+    DODGE_RATING = "ITEM_MOD_DODGE_RATING_SHORT",           -- Confirmed
+    -- Deduced from WotLK convention
+    SPELL_PEN = "ITEM_MOD_SPELL_PENETRATION_SHORT",
+    DEFENSE_RATING = "ITEM_MOD_DEFENSE_SKILL_RATING_SHORT",
+}

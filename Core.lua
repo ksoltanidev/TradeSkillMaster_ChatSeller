@@ -121,7 +121,7 @@ function TSM:SyncFromAuctionsTab(items)
     end
 
     local gearList = TSM.db.profile.gears.itemList
-    local GearsData = TSM.GearsData
+    local GD = TSM.GearsData
 
     -- Step 1: Remove all items with source="AuctionsTab"
     local removed = 0
@@ -135,10 +135,11 @@ function TSM:SyncFromAuctionsTab(items)
     -- Step 2: Add new items (only equippable gear)
     local added = 0
     for _, item in ipairs(items) do
-        local name, itemLink, _, _, _, itemClass, itemSubClass, _, equipLoc = GetItemInfo(item.link)
+        -- WoW 3.3.5 GetItemInfo returns: name, link, rarity, iLevel, reqLevel, type, subType, stackCount, equipLoc, texture, sellPrice
+        local name, itemLink, _, iLevel, reqLevel, itemClass, itemSubClass, _, equipLoc = GetItemInfo(item.link)
 
         -- Skip if item not cached or not equippable gear
-        if name and equipLoc and equipLoc ~= "" and GearsData.VALID_EQUIP_LOCS[equipLoc] then
+        if name and equipLoc and equipLoc ~= "" and GD.VALID_EQUIP_LOCS[equipLoc] then
             -- Check for duplicates (by name, excluding AuctionsTab source items we just removed)
             local isDuplicate = false
             for _, existing in ipairs(gearList) do
@@ -149,6 +150,17 @@ function TSM:SyncFromAuctionsTab(items)
             end
 
             if not isDuplicate then
+                -- Extract item stats using GetItemStats API
+                local stats = {}
+                local itemStats = GetItemStats(itemLink)
+                if itemStats then
+                    for statKey, modKey in pairs(GD.STAT_TO_ITEM_MOD) do
+                        if itemStats[modKey] and itemStats[modKey] > 0 then
+                            stats[statKey] = itemStats[modKey]
+                        end
+                    end
+                end
+
                 tinsert(gearList, {
                     link = itemLink,
                     price = item.price,
@@ -157,6 +169,9 @@ function TSM:SyncFromAuctionsTab(items)
                     itemClass = itemClass,
                     itemSubClass = itemSubClass,
                     source = "AuctionsTab",
+                    iLevel = iLevel,        -- Item level
+                    reqLevel = reqLevel,    -- Required player level
+                    stats = stats,          -- Stats table {STRENGTH = 50, ...}
                 })
                 added = added + 1
             end

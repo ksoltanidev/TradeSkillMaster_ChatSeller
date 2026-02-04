@@ -10,14 +10,25 @@ local TSM = select(2, ...)
 -- ===================================================================================== --
 
 function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
-    -- Get prefix and build pattern (case insensitive)
-    local prefix = TSM.db.profile.commandPrefix or "gem"
+    -- Get prefix (can be empty)
+    local prefix = TSM.db.profile.commandPrefix or ""
     local lowerMessage = strlower(message)
     local lowerPrefix = strlower(prefix)
 
+    -- Build patterns based on whether prefix is empty or not
+    local pricePattern, gearPattern
+    if lowerPrefix == "" then
+        -- No prefix: commands start directly with "price" or "gear"
+        pricePattern = "^price%s+"
+        gearPattern = "^gear%s*(.*)$"
+    else
+        -- With prefix: "prefix price" or "prefix gear"
+        pricePattern = "^" .. lowerPrefix .. "%s+price%s+"
+        gearPattern = "^" .. lowerPrefix .. "%s+gear%s*(.*)$"
+    end
+
     -- Check for price command
     if TSM.db.profile.prices.enabled then
-        local pricePattern = "^" .. lowerPrefix .. "%s+price%s+"
         if strmatch(lowerMessage, pricePattern) then
             -- Extract item links from the message
             local itemLinks = TSM:ExtractItemLinks(message)
@@ -30,7 +41,6 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
 
     -- Check for gear command
     if TSM.db.profile.gears.enabled then
-        local gearPattern = "^" .. lowerPrefix .. "%s+gear%s*(.*)$"
         local gearArgs = strmatch(lowerMessage, gearPattern)
         if gearArgs then
             TSM:HandleGearCommand(sender, gearArgs)

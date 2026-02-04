@@ -10,42 +10,155 @@ local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ChatSeller")
 local GD = TSM.GearsData
 
 -- ===================================================================================== --
--- Gear Command Handler
+-- Argument Parsing
 -- ===================================================================================== --
 
--- Handle the gear command: gem gear [category] [subcategory]
-function TSM:HandleGearCommand(sender, args)
-    -- Parse arguments into words
+-- Parse gear command arguments into structured filters
+-- Supports flexible order: "cloth head lvl 10-50 str" = "str lvl 10-50 cloth head"
+function TSM:ParseGearArguments(args)
+    local filters = {
+        category = nil,
+        subcategory = nil,
+        minLevel = nil,
+        maxLevel = nil,
+        minILevel = nil,
+        maxILevel = nil,
+        stats = {},  -- list of canonical stat names
+    }
+
     local words = {}
     for word in string.gmatch(args, "%S+") do
         tinsert(words, strlower(word))
     end
 
-    -- If no category provided, send help message
-    if #words == 0 then
+    local i = 1
+    while i <= #words do
+        local word = words[i]
+        local consumed = false
+
+        -- Check for level keywords
+        local levelType = GD.LEVEL_KEYWORDS[word]
+        if levelType then
+            local nextWord = words[i + 1]
+            if nextWord then
+                if levelType == "level" then
+                    -- Parse range "5-55" or single value "50"
+                    local min, max = strmatch(nextWord, "^(%d+)%-(%d+)$")
+                    if min and max then
+                        filters.minLevel = tonumber(min)
+                        filters.maxLevel = tonumber(max)
+                    else
+                        local val = tonumber(nextWord)
+                        if val then
+                            filters.minLevel = val
+                            filters.maxLevel = val
+                        end
+                    end
+                    i = i + 1  -- consume next word
+                elseif levelType == "minlevel" then
+                    filters.minLevel = tonumber(nextWord)
+                    i = i + 1
+                elseif levelType == "maxlevel" then
+                    filters.maxLevel = tonumber(nextWord)
+                    i = i + 1
+                end
+            end
+            consumed = true
+        end
+
+        -- Check for ilvl keywords
+        if not consumed then
+            local ilvlType = GD.ILVL_KEYWORDS[word]
+            if ilvlType then
+                local nextWord = words[i + 1]
+                if nextWord then
+                    if ilvlType == "ilvl" then
+                        local min, max = strmatch(nextWord, "^(%d+)%-(%d+)$")
+                        if min and max then
+                            filters.minILevel = tonumber(min)
+                            filters.maxILevel = tonumber(max)
+                        else
+                            local val = tonumber(nextWord)
+                            if val then
+                                filters.minILevel = val
+                                filters.maxILevel = val
+                            end
+                        end
+                        i = i + 1
+                    elseif ilvlType == "minilvl" then
+                        filters.minILevel = tonumber(nextWord)
+                        i = i + 1
+                    elseif ilvlType == "maxilvl" then
+                        filters.maxILevel = tonumber(nextWord)
+                        i = i + 1
+                    end
+                end
+                consumed = true
+            end
+        end
+
+        -- Check for stat aliases
+        if not consumed then
+            local stat = GD.STAT_ALIASES[word]
+            if stat then
+                tinsert(filters.stats, stat)
+                consumed = true
+            end
+        end
+
+        -- Check for category
+        if not consumed then
+            local cat = GD.CATEGORY_ALIASES[word]
+            if cat then
+                filters.category = cat
+                consumed = true
+            end
+        end
+
+        -- Check for subcategory (works with or without category already set)
+        if not consumed then
+            -- Try weapon subcategory first
+            local weaponSubcat = GD.WEAPON_SUBCATEGORY_ALIASES[word]
+            if weaponSubcat then
+                filters.subcategory = weaponSubcat
+                -- If no category set and it's a weapon subcategory, imply weapon category
+                if not filters.category then
+                    filters.category = "weapon"
+                end
+                consumed = true
+            else
+                -- Try armor subcategory
+                local armorSubcat = GD.SUBCATEGORY_ALIASES[word]
+                if armorSubcat then
+                    filters.subcategory = armorSubcat
+                    consumed = true
+                end
+            end
+        end
+
+        i = i + 1
+    end
+
+    return filters
+end
+
+-- ===================================================================================== --
+-- Gear Command Handler
+-- ===================================================================================== --
+
+-- Handle the gear command: gem gear [category] [subcategory] [filters]
+function TSM:HandleGearCommand(sender, args)
+    -- If no args provided, send help message
+    if not args or args == "" then
         TSM:SendGearHelpMessage(sender)
         return
     end
 
-    local category = nil
-    local subcategory = nil
-
-    -- First word is category (resolve alias)
-    if words[1] then
-        category = GD.CATEGORY_ALIASES[words[1]]
-    end
-
-    -- Second word is subcategory (if applicable)
-    if words[2] and category then
-        if category == "weapon" then
-            subcategory = GD.WEAPON_SUBCATEGORY_ALIASES[words[2]]
-        elseif GD.CATEGORIES_WITH_SUBCATEGORIES[category] then
-            subcategory = GD.SUBCATEGORY_ALIASES[words[2]]
-        end
-    end
+    -- Parse all arguments into structured filters
+    local filters = TSM:ParseGearArguments(args)
 
     -- Get matching items
-    local matchingItems = TSM:FilterGearItems(category, subcategory)
+    local matchingItems = TSM:FilterGearItems(filters)
 
     if #matchingItems == 0 then
         SendChatMessage(L["No matching gear found."], "WHISPER", nil, sender)
@@ -60,13 +173,13 @@ end
 -- Filtering
 -- ===================================================================================== --
 
--- Filter gear items by category and subcategory
-function TSM:FilterGearItems(category, subcategory)
+-- Filter gear items by filters table
+function TSM:FilterGearItems(filters)
     local items = TSM.db.profile.gears.itemList
     local results = {}
 
     for _, item in ipairs(items) do
-        if TSM:ItemMatchesFilter(item, category, subcategory) then
+        if TSM:ItemMatchesFilter(item, filters) then
             tinsert(results, item)
         end
     end
@@ -74,88 +187,113 @@ function TSM:FilterGearItems(category, subcategory)
     return results
 end
 
--- Check if an item matches the filter criteria
-function TSM:ItemMatchesFilter(item, category, subcategory)
-    -- No filter = return all items
-    if not category then
+-- Check if an item matches all filter criteria
+function TSM:ItemMatchesFilter(item, filters)
+    -- No filters = return all items
+    if not filters then
         return true
     end
 
-    local catFilter = GD.CATEGORY_FILTERS[category]
-    if not catFilter then
-        return false
-    end
-
     -- Check category match
-    if catFilter.subClass then
-        -- Armor type filter (cloth, leather, mail, plate)
-        if item.itemSubClass ~= catFilter.subClass then
+    if filters.category then
+        local catFilter = GD.CATEGORY_FILTERS[filters.category]
+        if not catFilter then
             return false
         end
-    elseif catFilter.equipLoc then
-        -- Accessory filter (neck, ring, trinket, back)
-        if item.equipLoc ~= catFilter.equipLoc then
-            return false
-        end
-    elseif catFilter.isWeapon then
-        -- Weapon category - check if equipLoc is a weapon type
-        if not GD.WEAPON_EQUIP_LOCS[item.equipLoc] then
-            return false
+
+        if catFilter.subClass then
+            -- Armor type filter (cloth, leather, mail, plate)
+            if item.itemSubClass ~= catFilter.subClass then
+                return false
+            end
+        elseif catFilter.equipLoc then
+            -- Accessory filter (neck, ring, trinket, back)
+            if item.equipLoc ~= catFilter.equipLoc then
+                return false
+            end
+        elseif catFilter.isWeapon then
+            -- Weapon category - check if equipLoc is a weapon type
+            if not GD.WEAPON_EQUIP_LOCS[item.equipLoc] then
+                return false
+            end
         end
     end
 
-    -- Check subcategory match (if provided)
-    if subcategory then
-        if category == "weapon" then
+    -- Check subcategory match
+    if filters.subcategory then
+        if filters.category == "weapon" then
             -- Weapon subcategory filter
-            local subFilter = GD.WEAPON_FILTERS[subcategory]
-            if not subFilter then
-                return true  -- Unknown subcategory, skip filtering
-            end
-
-            if subFilter.equipLoc then
-                -- Shield special case
-                if item.equipLoc ~= subFilter.equipLoc then
-                    return false
-                end
-            elseif subFilter.subClass then
-                if item.itemSubClass ~= subFilter.subClass then
-                    return false
-                end
-            elseif subFilter.subClasses then
-                local matched = false
-                for _, subClass in ipairs(subFilter.subClasses) do
-                    if item.itemSubClass == subClass then
-                        matched = true
-                        break
+            local subFilter = GD.WEAPON_FILTERS[filters.subcategory]
+            if subFilter then
+                if subFilter.equipLoc then
+                    if item.equipLoc ~= subFilter.equipLoc then
+                        return false
                     end
-                end
-                if not matched then
-                    return false
+                elseif subFilter.subClass then
+                    if item.itemSubClass ~= subFilter.subClass then
+                        return false
+                    end
+                elseif subFilter.subClasses then
+                    local matched = false
+                    for _, subClass in ipairs(subFilter.subClasses) do
+                        if item.itemSubClass == subClass then
+                            matched = true
+                            break
+                        end
+                    end
+                    if not matched then return false end
                 end
             end
         else
             -- Armor slot subcategory filter
-            local slotFilter = GD.SUBCATEGORY_FILTERS[subcategory]
-            if not slotFilter then
-                return true  -- Unknown subcategory, skip filtering
-            end
-
-            if slotFilter.equipLoc then
-                if item.equipLoc ~= slotFilter.equipLoc then
-                    return false
-                end
-            elseif slotFilter.equipLocs then
-                local matched = false
-                for _, loc in ipairs(slotFilter.equipLocs) do
-                    if item.equipLoc == loc then
-                        matched = true
-                        break
+            local slotFilter = GD.SUBCATEGORY_FILTERS[filters.subcategory]
+            if slotFilter then
+                if slotFilter.equipLoc then
+                    if item.equipLoc ~= slotFilter.equipLoc then
+                        return false
                     end
+                elseif slotFilter.equipLocs then
+                    local matched = false
+                    for _, loc in ipairs(slotFilter.equipLocs) do
+                        if item.equipLoc == loc then
+                            matched = true
+                            break
+                        end
+                    end
+                    if not matched then return false end
                 end
-                if not matched then
-                    return false
-                end
+            end
+        end
+    end
+
+    -- Check required level filter
+    if filters.minLevel or filters.maxLevel then
+        local itemReqLevel = item.reqLevel or 0
+        if filters.minLevel and itemReqLevel < filters.minLevel then
+            return false
+        end
+        if filters.maxLevel and itemReqLevel > filters.maxLevel then
+            return false
+        end
+    end
+
+    -- Check item level filter
+    if filters.minILevel or filters.maxILevel then
+        local itemILevel = item.iLevel or 0
+        if filters.minILevel and itemILevel < filters.minILevel then
+            return false
+        end
+        if filters.maxILevel and itemILevel > filters.maxILevel then
+            return false
+        end
+    end
+
+    -- Check stat filters (all requested stats must be present)
+    if filters.stats and #filters.stats > 0 then
+        local itemStats = item.stats or {}
+        for _, statKey in ipairs(filters.stats) do
+            if not itemStats[statKey] or itemStats[statKey] <= 0 then
+                return false
             end
         end
     end
@@ -204,12 +342,17 @@ end
 
 -- Send help message for gear command
 function TSM:SendGearHelpMessage(sender)
-    local prefix = TSM.db.profile.commandPrefix or "gem"
-    SendChatMessage("Welcome to my Gear Shop - To view what I am selling, use the following command:", "WHISPER", nil, sender)
-    SendChatMessage(prefix .. " gear [category] [subcategory]", "WHISPER", nil, sender)
+    local prefix = TSM.db.profile.commandPrefix or ""
+    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+    SendChatMessage("Welcome to my Gear Shop - Use the following command:", "WHISPER", nil, sender)
+    SendChatMessage(cmdPrefix .. "gear (category) (subcategory) (filters)", "WHISPER", nil, sender)
     SendChatMessage("Categories - cloth, leather, mail, plate, back, neck, ring, trinket, weapon", "WHISPER", nil, sender)
-    SendChatMessage("Armor subcategories - head, shoulders, chest, wrist, gloves, waist, legs, feet", "WHISPER", nil, sender)
-    SendChatMessage("Weapons subcategories - sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, shield", "WHISPER", nil, sender)
-    SendChatMessage("Example - " .. prefix .. " gear cloth head", "WHISPER", nil, sender)
-    SendChatMessage("Accepts English, French and Spanish keywords.", "WHISPER", nil, sender)
+    SendChatMessage("Armor slots - head, shoulders, chest, wrist, gloves, waist, legs, feet", "WHISPER", nil, sender)
+    SendChatMessage("Weapons - sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, shield", "WHISPER", nil, sender)
+    SendChatMessage("Level filters - lvl 10-50, minlvl 10, maxlvl 50", "WHISPER", nil, sender)
+    SendChatMessage("Item level - ilvl 200-300, minilvl 200, maxilvl 300", "WHISPER", nil, sender)
+    SendChatMessage("Stats - str, agi, int, spi, sta, sp, ap, crit, haste, hit, exp", "WHISPER", nil, sender)
+    SendChatMessage("WotLK stats - mp5, sd (spell dmg), armpen, spellpen, block, parry, dodge, def", "WHISPER", nil, sender)
+    SendChatMessage("Example - " .. cmdPrefix .. "gear plate chest lvl 70-80 str armpen", "WHISPER", nil, sender)
+    SendChatMessage("Accepts EN/FR/ES keywords.", "WHISPER", nil, sender)
 end

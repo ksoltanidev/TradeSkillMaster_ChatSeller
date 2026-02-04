@@ -17,7 +17,8 @@ local GD = TSM.GearsData
 
 function Options:LoadGearsTab(container)
     Options.gearsContainer = container
-    local prefix = TSM.db.profile.commandPrefix or "gem"
+    local prefix = TSM.db.profile.commandPrefix or ""
+    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
     local items = TSM.db.profile.gears.itemList
 
     local page = {
@@ -48,7 +49,7 @@ function Options:LoadGearsTab(container)
                         },
                         {
                             type = "Label",
-                            text = "  " .. prefix .. " gear [category] [subcategory]",
+                            text = "  " .. cmdPrefix .. "gear [category] [subcategory]",
                             fullWidth = true,
                         },
                         {
@@ -221,8 +222,8 @@ function Options:AddGearItemFromInput()
         return
     end
 
-    -- Get item info
-    local name, itemLink, _, _, _, itemClass, itemSubClass, _, equipLoc = GetItemInfo(link)
+    -- Get item info (WoW 3.3.5 GetItemInfo returns: name, link, rarity, iLevel, reqLevel, type, subType, stackCount, equipLoc, texture, sellPrice)
+    local name, itemLink, _, iLevel, reqLevel, itemClass, itemSubClass, _, equipLoc = GetItemInfo(link)
 
     if not name then
         TSM:Print(L["Invalid item link or item not cached."])
@@ -252,6 +253,17 @@ function Options:AddGearItemFromInput()
         end
     end
 
+    -- Extract item stats using GetItemStats API
+    local stats = {}
+    local itemStats = GetItemStats(itemLink)
+    if itemStats then
+        for statKey, modKey in pairs(GD.STAT_TO_ITEM_MOD) do
+            if itemStats[modKey] and itemStats[modKey] > 0 then
+                stats[statKey] = itemStats[modKey]
+            end
+        end
+    end
+
     -- Add to list
     tinsert(TSM.db.profile.gears.itemList, {
         link = itemLink,
@@ -260,6 +272,9 @@ function Options:AddGearItemFromInput()
         equipLoc = equipLoc,
         itemClass = itemClass,
         itemSubClass = itemSubClass,
+        iLevel = iLevel,        -- Item level
+        reqLevel = reqLevel,    -- Required player level
+        stats = stats,          -- Stats table {STRENGTH = 50, ...}
     })
 
     TSM:Print(format(L["Added %s to gear list."], itemLink))
