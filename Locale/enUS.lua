@@ -73,3 +73,19 @@ L["items"] = true
 L["Gear Shop - Usage:"] = true
 L["Example: %s gear cloth head"] = true
 L["Accepts English, French and Spanish keywords."] = true
+
+-- Transmogs Tab
+L["Transmog Lookup"] = true
+L["Enable Transmog Lookup"] = true
+L["Allow users to whisper you for transmog listings."] = true
+L["Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars"] = true
+L["Subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown"] = true
+L["Armor subtypes: head, shoulders, chest, wrist, gloves, waist, legs, feet, back"] = true
+L["Add Transmog Item"] = true
+L["Transmog List"] = true
+L["No transmog items. Add items above."] = true
+L["No matching transmog items found."] = true
+L["SubType"] = true
+L["%s is already in the transmog list."] = true
+L["Added %s to transmog list."] = true
+L["Updated %s in transmog list."] = true

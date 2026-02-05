@@ -27,6 +27,11 @@ local savedDBDefaults = {
             enabled = true,     -- Enable/disable gear lookup feature
             itemList = {},      -- {link, price, name, equipLoc, itemClass, itemSubClass, source}
         },
+        transmogs = {
+            enabled = true,     -- Enable/disable transmog lookup feature
+            itemList = {},      -- {link, price, name, tmogType, tmogSubType, source}
+            itemHistory = {},   -- { ["Item Name"] = { price = copper, tmogType = "weapon", tmogSubType = "sword" } }
+        },
     },
 }
 
