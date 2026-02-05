@@ -373,19 +373,16 @@ function Options:GetTransmogListWidgets()
 
     -- Header row
     tinsert(children, { type = "Label", text = "|cffffd100" .. L["Item"] .. "|r", relativeWidth = 0.28 })
-    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Price"] .. "|r", relativeWidth = 0.12 })
-    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Type"] .. "|r", relativeWidth = 0.15 })
-    tinsert(children, { type = "Label", text = "|cffffd100" .. L["SubType"] .. "|r", relativeWidth = 0.15 })
-    tinsert(children, { type = "Label", text = "", relativeWidth = 0.15 })
+    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Price"] .. "|r", relativeWidth = 0.10 })
+    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Type"] .. "|r", relativeWidth = 0.18 })
+    tinsert(children, { type = "Label", text = "|cffffd100" .. L["SubType"] .. "|r", relativeWidth = 0.18 })
+    tinsert(children, { type = "Label", text = "", relativeWidth = 0.12 })
 
     -- Item rows
     for i, item in ipairs(items) do
-        local typeDisplay = TMOG_TYPE_DISPLAY[item.tmogType] or item.tmogType or L["N/A"]
-        local subTypeDisplay = (item.tmogSubType and item.tmogSubType ~= "" and item.tmogSubType ~= "none")
-            and (TMOG_SUBTYPE_DISPLAY[item.tmogSubType] or item.tmogSubType)
-            or "-"
-
         local priceGold = (item.price and item.price > 0) and tostring(math.floor(item.price / 10000)) or ""
+        local currentType = item.tmogType or "misc"
+        local currentSubType = item.tmogSubType or "none"
 
         tinsert(children, {
             type = "InteractiveLabel",
@@ -396,7 +393,7 @@ function Options:GetTransmogListWidgets()
         tinsert(children, {
             type = "EditBox",
             label = "",
-            relativeWidth = 0.12,
+            relativeWidth = 0.10,
             value = priceGold,
             callback = function(widget, _, value)
                 local goldAmount = tonumber(value)
@@ -409,19 +406,40 @@ function Options:GetTransmogListWidgets()
             end,
         })
         tinsert(children, {
-            type = "Label",
-            text = typeDisplay,
-            relativeWidth = 0.15,
+            type = "Dropdown",
+            label = "",
+            relativeWidth = 0.18,
+            list = GetTypeDropdownList(),
+            order = GetTypeDropdownOrder(),
+            value = currentType,
+            callback = function(widget, _, value)
+                item.tmogType = value
+                -- Update history
+                if TSM.db.profile.transmogs.itemHistory[item.name] then
+                    TSM.db.profile.transmogs.itemHistory[item.name].tmogType = value
+                end
+            end,
         })
         tinsert(children, {
-            type = "Label",
-            text = subTypeDisplay,
-            relativeWidth = 0.15,
+            type = "Dropdown",
+            label = "",
+            relativeWidth = 0.18,
+            list = GetSubTypeDropdownList(),
+            order = GetSubTypeDropdownOrder(),
+            value = currentSubType,
+            callback = function(widget, _, value)
+                local subType = value ~= "none" and value or nil
+                item.tmogSubType = subType
+                -- Update history
+                if TSM.db.profile.transmogs.itemHistory[item.name] then
+                    TSM.db.profile.transmogs.itemHistory[item.name].tmogSubType = subType
+                end
+            end,
         })
         tinsert(children, {
             type = "Button",
             text = L["Delete"],
-            relativeWidth = 0.15,
+            relativeWidth = 0.12,
             callback = function()
                 tremove(TSM.db.profile.transmogs.itemList, i)
                 Options:RefreshTransmogsTab()
