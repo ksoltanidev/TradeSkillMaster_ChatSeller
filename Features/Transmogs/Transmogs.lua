@@ -237,6 +237,12 @@ function TSM:TransmogItemMatchesFilter(item, filters)
         return true
     end
 
+    -- Check stock status - only show items in stock
+    -- Items with inStock == nil (never checked) are still shown
+    if item.inStock == false then
+        return false
+    end
+
     -- Check type match
     if filters.tmogType then
         if not item.tmogType or strlower(item.tmogType) ~= strlower(filters.tmogType) then

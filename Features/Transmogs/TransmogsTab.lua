@@ -172,7 +172,7 @@ end
 -- ===================================================================================== --
 
 -- Filter options: "all" + each type + "free"
-local FILTER_LIST = { "all", "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars", "free" }
+local FILTER_LIST = { "all", "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars", "free", "out of stock" }
 local FILTER_DISPLAY = {
     ["all"] = L["All"],
     ["weapon"] = "Weapon",
@@ -185,6 +185,7 @@ local FILTER_DISPLAY = {
     ["illusions"] = "Illusions",
     ["altars"] = "Altars",
     ["free"] = L["Free"],
+    ["out of stock"] = L["Out of Stock"],
 }
 
 local function GetFilterDropdownList()
@@ -220,7 +221,7 @@ function Options:LoadTransmogsTab(container)
         Options.pendingTmogSubType = "none"
     end
     if not Options.tmogFilterTab then
-        Options.tmogFilterTab = "all"
+        Options.tmogFilterTab = "mount"
     end
 
     -- Get filtered items for the title count
@@ -360,7 +361,7 @@ function Options:LoadTransmogsTab(container)
                         {
                             type = "Button",
                             text = L["Add"],
-                            relativeWidth = 0.12,
+                            relativeWidth = 0.10,
                             callback = function()
                                 Options:AddTransmogItemFromInput()
                             end,
@@ -372,6 +373,14 @@ function Options:LoadTransmogsTab(container)
                             callback = function()
                                 wipe(TSM.db.profile.transmogs.itemList)
                                 Options:RefreshTransmogsTab()
+                            end,
+                        },
+                        {
+                            type = "Button",
+                            text = L["Refresh Stock"],
+                            relativeWidth = 0.14,
+                            callback = function()
+                                Options:RefreshTransmogStock()
                             end,
                         },
                     },
@@ -423,6 +432,8 @@ function Options:GetFilteredTransmogItems()
             show = true
         elseif filterValue == "free" then
             show = (not item.price or item.price == 0)
+        elseif filterValue == "out of stock" then
+            show = (item.inStock == false)
         else
             show = (item.tmogType == filterValue)
         end
@@ -461,9 +472,17 @@ function Options:GetTransmogListWidgets(filteredItems)
         local currentType = item.tmogType or "misc"
         local currentSubType = item.tmogSubType or "none"
 
+        -- Stock indicator prefix
+        local stockPrefix = ""
+        if item.inStock == true then
+            stockPrefix = "|cff00ff00[S]|r "
+        elseif item.inStock == false then
+            stockPrefix = "|cffff0000[X]|r "
+        end
+
         tinsert(children, {
             type = "InteractiveLabel",
-            text = item.link or item.name or "Unknown",
+            text = stockPrefix .. (item.link or item.name or "Unknown"),
             relativeWidth = 0.28,
             tooltip = item.link,
         })
@@ -525,6 +544,41 @@ function Options:GetTransmogListWidgets(filteredItems)
     end
 
     return children
+end
+
+-- Refresh stock status for all transmog items using ItemTracker
+function Options:RefreshTransmogStock()
+    local ItemTracker = LibStub("AceAddon-3.0"):GetAddon("TSM_ItemTracker", true)
+    if not ItemTracker then
+        TSM:Print(L["ItemTracker not loaded."])
+        return
+    end
+
+    local items = TSM.db.profile.transmogs.itemList
+    local inStockCount, outOfStockCount = 0, 0
+
+    for _, item in ipairs(items) do
+        local itemString = item.link and TSMAPI:GetItemString(item.link)
+        if itemString then
+            local playerTotal, altTotal = ItemTracker:GetPlayerTotal(itemString)
+            local guildTotal = ItemTracker:GetGuildTotal(itemString) or 0
+            local personalBanksTotal = ItemTracker:GetPersonalBanksTotal(itemString) or 0
+            local realmBankTotal = ItemTracker:GetRealmBankTotal(itemString) or 0
+            local total = (playerTotal or 0) + (altTotal or 0) + guildTotal + personalBanksTotal + realmBankTotal
+            item.inStock = (total > 0)
+        else
+            item.inStock = false
+        end
+
+        if item.inStock then
+            inStockCount = inStockCount + 1
+        else
+            outOfStockCount = outOfStockCount + 1
+        end
+    end
+
+    TSM:Print(format(L["Stock refreshed: %d in stock, %d out of stock."], inStockCount, outOfStockCount))
+    Options:RefreshTransmogsTab()
 end
 
 -- Refresh the transmogs tab

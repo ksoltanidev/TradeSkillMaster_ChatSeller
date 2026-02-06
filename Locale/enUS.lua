@@ -93,6 +93,12 @@ L["All"] = true
 L["Free"] = true
 L["Filter"] = true
 
+-- Stock Tracking
+L["Refresh Stock"] = true
+L["Stock refreshed: %d in stock, %d out of stock."] = true
+L["ItemTracker not loaded."] = true
+L["Out of Stock"] = true
+
 -- GuildBank Integration
 L["Sync Tmog"] = true
 L["No guild bank tab selected."] = true
