@@ -89,3 +89,11 @@ L["SubType"] = true
 L["%s is already in the transmog list."] = true
 L["Added %s to transmog list."] = true
 L["Updated %s in transmog list."] = true
+L["All"] = true
+L["Free"] = true
+L["Filter"] = true
+
+-- GuildBank Integration
+L["Sync Tmog"] = true
+L["No guild bank tab selected."] = true
+L["Tmog sync: added %d items (%d skipped)."] = true

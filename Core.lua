@@ -185,3 +185,63 @@ function TSM:SyncFromAuctionsTab(items)
 
     return added, removed
 end
+
+-- Sync transmog items from currently open guild bank tab
+-- Additive-only: adds new items, skips duplicates (by name)
+-- Uses itemHistory for saved type/subtype/price, falls back to auto-detection
+-- @param tab: guild bank tab number (1-8)
+-- @return number of items added, number of items skipped
+function TSM:SyncFromGuildBank(tab)
+    if not tab or tab == 0 then return 0, 0 end
+
+    local tmogList = TSM.db.profile.transmogs.itemList
+    local history = TSM.db.profile.transmogs.itemHistory
+
+    -- Build name lookup for O(1) duplicate checking
+    local existingNames = {}
+    for _, item in ipairs(tmogList) do
+        if item.name then
+            existingNames[item.name] = true
+        end
+    end
+
+    local added, skipped = 0, 0
+    for slot = 1, 98 do
+        local itemLink = GetGuildBankItemLink(tab, slot)
+        if itemLink then
+            local name, _, _, _, _, _, itemSubClass, _, equipLoc = GetItemInfo(itemLink)
+            if name and not existingNames[name] then
+                local tmogType, tmogSubType, price
+                local historyEntry = history and history[name]
+
+                if historyEntry then
+                    tmogType = historyEntry.tmogType
+                    tmogSubType = historyEntry.tmogSubType
+                    price = historyEntry.price
+                else
+                    tmogType, tmogSubType = TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
+                end
+
+                -- Default to "misc" if type could not be detected
+                tmogType = tmogType or "misc"
+
+                tinsert(tmogList, {
+                    link = itemLink,
+                    price = price,
+                    name = name,
+                    tmogType = tmogType,
+                    tmogSubType = tmogSubType,
+                    source = "GuildBank",
+                })
+                existingNames[name] = true
+                added = added + 1
+            else
+                if itemLink then
+                    skipped = skipped + 1
+                end
+            end
+        end
+    end
+
+    return added, skipped
+end

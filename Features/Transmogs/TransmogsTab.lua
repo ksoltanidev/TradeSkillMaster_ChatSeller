@@ -107,7 +107,7 @@ local EQUIP_LOC_TO_TMOG_SUBTYPE = {
 
 -- Detect tmogType and tmogSubType from GetItemInfo data
 -- Returns tmogType, tmogSubType (or nil, nil if unrecognized)
-local function DetectTmogTypeAndSubType(itemSubClass, equipLoc)
+function TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
     -- Check weapon subclass first
     local weaponSubType = ITEM_SUBCLASS_TO_TMOG_SUBTYPE[itemSubClass]
     if weaponSubType then
@@ -168,6 +168,42 @@ local function GetSubTypeDropdownOrder()
 end
 
 -- ===================================================================================== --
+-- Filter Dropdown for Item List
+-- ===================================================================================== --
+
+-- Filter options: "all" + each type + "free"
+local FILTER_LIST = { "all", "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars", "free" }
+local FILTER_DISPLAY = {
+    ["all"] = L["All"],
+    ["weapon"] = "Weapon",
+    ["mount"] = "Mount",
+    ["pet"] = "Pet",
+    ["armor set"] = "Armor Set",
+    ["shield"] = "Shield",
+    ["tabard"] = "Tabard",
+    ["misc"] = "Misc",
+    ["illusions"] = "Illusions",
+    ["altars"] = "Altars",
+    ["free"] = L["Free"],
+}
+
+local function GetFilterDropdownList()
+    local list = {}
+    for _, key in ipairs(FILTER_LIST) do
+        list[key] = FILTER_DISPLAY[key] or key
+    end
+    return list
+end
+
+local function GetFilterDropdownOrder()
+    local order = {}
+    for _, key in ipairs(FILTER_LIST) do
+        tinsert(order, key)
+    end
+    return order
+end
+
+-- ===================================================================================== --
 -- Transmogs Tab
 -- ===================================================================================== --
 
@@ -175,7 +211,6 @@ function Options:LoadTransmogsTab(container)
     Options.transmogsContainer = container
     local prefix = TSM.db.profile.commandPrefix or ""
     local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
-    local items = TSM.db.profile.transmogs.itemList
 
     -- Initialize dropdown selections if not set
     if not Options.pendingTmogType then
@@ -184,6 +219,12 @@ function Options:LoadTransmogsTab(container)
     if not Options.pendingTmogSubType then
         Options.pendingTmogSubType = "none"
     end
+    if not Options.tmogFilterTab then
+        Options.tmogFilterTab = "all"
+    end
+
+    -- Get filtered items for the title count
+    local filteredItems = Options:GetFilteredTransmogItems()
 
     local page = {
         {
@@ -270,7 +311,7 @@ function Options:LoadTransmogsTab(container)
                                             end
                                         else
                                             -- No history: try to detect from item data
-                                            local detectedType, detectedSubType = DetectTmogTypeAndSubType(itemSubClass, equipLoc)
+                                            local detectedType, detectedSubType = TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
                                             if detectedType then
                                                 Options.pendingTmogType = detectedType
                                             end
@@ -338,13 +379,26 @@ function Options:LoadTransmogsTab(container)
                 {
                     type = "HeadingLine",
                 },
+                -- Filter Dropdown
+                {
+                    type = "Dropdown",
+                    label = L["Filter"],
+                    relativeWidth = 0.30,
+                    list = GetFilterDropdownList(),
+                    order = GetFilterDropdownOrder(),
+                    value = Options.tmogFilterTab,
+                    callback = function(widget, _, value)
+                        Options.tmogFilterTab = value
+                        Options:RefreshTransmogsTab()
+                    end,
+                },
                 -- Item List Section
                 {
                     type = "InlineGroup",
-                    title = L["Transmog List"] .. " (" .. #items .. " " .. L["items"] .. ")",
+                    title = L["Transmog List"] .. " (" .. #filteredItems .. " " .. L["items"] .. ")",
                     layout = "Flow",
                     fullWidth = true,
-                    children = Options:GetTransmogListWidgets(),
+                    children = Options:GetTransmogListWidgets(filteredItems),
                 },
             },
         },
@@ -357,12 +411,33 @@ end
 -- Transmog List Management
 -- ===================================================================================== --
 
--- Get widgets for the transmog item list
-function Options:GetTransmogListWidgets()
-    local children = {}
-    local items = TSM.db.profile.transmogs.itemList
+-- Get filtered items based on current filter tab selection
+-- Returns array of { index = originalIndex, item = itemRef }
+function Options:GetFilteredTransmogItems()
+    local filterValue = Options.tmogFilterTab or "all"
+    local allItems = TSM.db.profile.transmogs.itemList
+    local filtered = {}
+    for i, item in ipairs(allItems) do
+        local show = false
+        if filterValue == "all" then
+            show = true
+        elseif filterValue == "free" then
+            show = (not item.price or item.price == 0)
+        else
+            show = (item.tmogType == filterValue)
+        end
+        if show then
+            tinsert(filtered, { index = i, item = item })
+        end
+    end
+    return filtered
+end
 
-    if #items == 0 then
+-- Get widgets for the transmog item list
+function Options:GetTransmogListWidgets(filteredItems)
+    local children = {}
+
+    if #filteredItems == 0 then
         tinsert(children, {
             type = "Label",
             text = L["No transmog items. Add items above."],
@@ -379,7 +454,9 @@ function Options:GetTransmogListWidgets()
     tinsert(children, { type = "Label", text = "", relativeWidth = 0.12 })
 
     -- Item rows
-    for i, item in ipairs(items) do
+    for _, entry in ipairs(filteredItems) do
+        local originalIndex = entry.index
+        local item = entry.item
         local priceGold = (item.price and item.price > 0) and tostring(math.floor(item.price / 10000)) or ""
         local currentType = item.tmogType or "misc"
         local currentSubType = item.tmogSubType or "none"
@@ -441,7 +518,7 @@ function Options:GetTransmogListWidgets()
             text = L["Delete"],
             relativeWidth = 0.12,
             callback = function()
-                tremove(TSM.db.profile.transmogs.itemList, i)
+                tremove(TSM.db.profile.transmogs.itemList, originalIndex)
                 Options:RefreshTransmogsTab()
             end,
         })

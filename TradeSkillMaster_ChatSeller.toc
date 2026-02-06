@@ -28,3 +28,6 @@ Features\Gears\GearsTab.lua
 # Features - Transmogs
 Features\Transmogs\Transmogs.lua
 Features\Transmogs\TransmogsTab.lua
+
+# Integrations
+Integrations\BagnonGuildBank.lua
