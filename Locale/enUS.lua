@@ -128,3 +128,6 @@ L["Gather All"] = true
 L["No offers yet."] = true
 L["I accept your offer for %s at %sg. Trade or CoD?"] = true
 L["How would you like to receive %s? Trade or CoD?"] = true
+L["Mailbox must be open to send CoD."] = true
+L["Item not found in your bags."] = true
+L["CoD sent for %s to %s."] = true
