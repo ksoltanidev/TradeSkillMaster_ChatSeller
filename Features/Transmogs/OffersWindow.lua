@@ -392,12 +392,22 @@ function OW:CreateRows(parent)
         cancelBtn:SetHighlightFontObject(GameFontHighlightSmall)
         row.cancelBtn = cancelBtn
 
+        -- "Confirm" button (shown on all statuses except "Offered")
+        local confirmBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+        confirmBtn:SetSize(60, private.ROW_HEIGHT - 6)
+        confirmBtn:SetPoint("LEFT", cancelBtn, "RIGHT", 4, 0)
+        confirmBtn:SetText(L["Confirm"])
+        confirmBtn:SetNormalFontObject(GameFontNormalSmall)
+        confirmBtn:SetHighlightFontObject(GameFontHighlightSmall)
+        row.confirmBtn = confirmBtn
+
         -- Initially hide all action buttons
         acceptBtn:Hide()
         refuseBtn:Hide()
         askHowBtn:Hide()
         codBtn:Hide()
         cancelBtn:Hide()
+        confirmBtn:Hide()
 
         row.actionsFrame = actionsFrame
         row:Hide()
@@ -501,6 +511,7 @@ function OW:SetupActionButtons(row, offer, offerIndex)
     row.askHowBtn:Hide()
     row.codBtn:Hide()
     row.cancelBtn:Hide()
+    row.confirmBtn:Hide()
 
     if status == "Offered" then
         row.acceptBtn:Show()
@@ -517,6 +528,7 @@ function OW:SetupActionButtons(row, offer, offerIndex)
         row.askHowBtn:Show()
         row.codBtn:Show()
         row.cancelBtn:Show()
+        row.confirmBtn:Show()
 
         row.askHowBtn:SetScript("OnClick", function()
             OW:AskHow(offerIndex)
@@ -526,6 +538,9 @@ function OW:SetupActionButtons(row, offer, offerIndex)
         end)
         row.cancelBtn:SetScript("OnClick", function()
             OW:CancelOffer(offerIndex)
+        end)
+        row.confirmBtn:SetScript("OnClick", function()
+            OW:ConfirmOffer(offerIndex)
         end)
     end
 end
@@ -554,6 +569,11 @@ function OW:RefuseOffer(offerIndex)
 end
 
 function OW:CancelOffer(offerIndex)
+    tremove(TSM.db.profile.transmogs.offerList, offerIndex)
+    OW:Refresh()
+end
+
+function OW:ConfirmOffer(offerIndex)
     tremove(TSM.db.profile.transmogs.offerList, offerIndex)
     OW:Refresh()
 end

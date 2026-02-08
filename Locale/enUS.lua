@@ -134,3 +134,4 @@ L["Add Offer"] = true
 L["Cancel"] = true
 L["Please enter an item link and a buyer name."] = true
 L["Manually added offer for %s from %s."] = true
+L["Confirm"] = true
