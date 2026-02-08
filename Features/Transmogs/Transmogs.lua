@@ -20,7 +20,7 @@ local TYPE_ALIASES = {
     weapon = "weapon", weapons = "weapon", arme = "weapon", armes = "weapon",
     mount = "mount", mounts = "mount", monture = "mount", montures = "mount",
     pet = "pet", pets = "pet", familier = "pet", familiers = "pet", mascota = "pet",
-    set = "armor set", sets = "armor set", ["armor set"] = "armor set", armorset = "armor set",
+    set = "armor set", sets = "armor set", ["armor set"] = "armor set", armorset = "armor set", armor = "armor set",
     shield = "shield", shields = "shield", bouclier = "shield", escudo = "shield",
     tabard = "tabard", tabards = "tabard", tabardo = "tabard",
     misc = "misc", divers = "misc", varios = "misc",
@@ -111,6 +111,14 @@ function TSM:ParseTransmogArguments(args)
             consumed = true
         end
 
+        -- Check for "free" filter keyword
+        if not consumed then
+            if word == "free" or word == "gratuit" or word == "gratis" then
+                filters.isFree = true
+                consumed = true
+            end
+        end
+
         -- Check for type aliases
         if not consumed then
             local tmogType = TYPE_ALIASES[word]
@@ -194,7 +202,7 @@ function TSM:HandleTransmogCommand(sender, args)
     local filters = TSM:ParseTransmogArguments(args)
 
     -- Check if any filter was recognized
-    local hasAnyFilter = filters.tmogType or filters.tmogSubType or filters.nameFilter
+    local hasAnyFilter = filters.tmogType or filters.tmogSubType or filters.nameFilter or filters.isFree
 
     if not hasAnyFilter then
         TSM:SendTransmogHelpMessage(sender)
@@ -243,6 +251,13 @@ function TSM:TransmogItemMatchesFilter(item, filters)
         return false
     end
 
+    -- Check free filter - only show items with no price or price == 0
+    if filters.isFree then
+        if item.price and item.price > 0 then
+            return false
+        end
+    end
+
     -- Check type match
     if filters.tmogType then
         if not item.tmogType or strlower(item.tmogType) ~= strlower(filters.tmogType) then
@@ -273,11 +288,11 @@ end
 -- Response Functions
 -- ===================================================================================== --
 
--- Format money as gold only (po)
+-- Format money as gold only (g)
 function TSM:FormatGoldOnly(money)
-    if not money or money == 0 then return "0po" end
+    if not money or money == 0 then return "0g" end
     local gold = math.floor(money / 10000)
-    return gold .. "po"
+    return gold .. "g"
 end
 
 -- Format a transmog item for chat response
@@ -313,8 +328,8 @@ function TSM:SendTransmogHelpMessage(sender)
     local prefix = TSM.db.profile.commandPrefix or ""
     local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
     SendChatMessage("Welcome to the Transmog Shop! Browse cosmetic items using chat messages.", "WHISPER", nil, sender)
-    SendChatMessage("Usage: '" .. cmdPrefix .. "tmog [type] [subtype] [name filter]'", "WHISPER", nil, sender)
-    SendChatMessage("Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars", "WHISPER", nil, sender)
+    SendChatMessage("Usage Examples: '" .. cmdPrefix .. "tmog mount', '" .. cmdPrefix .. "tmog weapon sword', '" .. cmdPrefix .. "tmog windfury'", "WHISPER", nil, sender)
+    SendChatMessage("Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars, free", "WHISPER", nil, sender)
     SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown", "WHISPER", nil, sender)
     SendChatMessage("Armor subtypes: head, shoulders, chest, wrist, gloves, waist, legs, feet, back", "WHISPER", nil, sender)
     SendChatMessage("Name filter: use quotes for multi-word search, e.g. " .. cmdPrefix .. "tmog \"fire sword\"", "WHISPER", nil, sender)

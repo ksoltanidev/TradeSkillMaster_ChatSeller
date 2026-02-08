@@ -103,3 +103,28 @@ L["Out of Stock"] = true
 L["Sync Tmog"] = true
 L["No guild bank tab selected."] = true
 L["Tmog sync: added %d items (%d skipped)."] = true
+
+-- Buy Command
+L["Item not found in transmog list."] = true
+L["Item is out of stock."] = true
+L["Offer received for %s at %sg. I'll get back to you!"] = true
+L["You already have a pending offer for %s."] = true
+
+-- Offers Window
+L["Tmog Offers"] = true
+L["Toggle Tmog Offers window"] = true
+L["Buyer"] = true
+L["Status"] = true
+L["Actions"] = true
+L["Offered"] = true
+L["Accepted"] = true
+L["CoD Sent"] = true
+L["Accept"] = true
+L["Refuse"] = true
+L["Ask How"] = true
+L["CoD"] = true
+L["Trade"] = true
+L["Gather All"] = true
+L["No offers yet."] = true
+L["I accept your offer for %s at %sg. Trade or CoD?"] = true
+L["How would you like to receive %s? Trade or CoD?"] = true

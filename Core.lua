@@ -31,6 +31,7 @@ local savedDBDefaults = {
             enabled = true,     -- Enable/disable transmog lookup feature
             itemList = {},      -- {link, price, name, tmogType, tmogSubType, source}
             itemHistory = {},   -- { ["Item Name"] = { price = copper, tmogType = "weapon", tmogSubType = "sword" } }
+            offerList = {},     -- {itemName, itemLink, buyer, offeredPrice, setPrice, isUnderSetPrice, status, timestamp}
         },
     },
 }
@@ -86,9 +87,26 @@ function TSM:RegisterModule()
                 TSMAPI:SelectIcon("TSM_ChatSeller", "ChatSeller")
             end
         },
+        {
+            key = "tmogoffers",
+            label = L["Toggle Tmog Offers window"],
+            callback = function()
+                TSM:ToggleOffersWindow()
+            end
+        },
     }
 
     TSMAPI:NewModule(TSM)
+end
+
+-- ===================================================================================== --
+-- Offers Window Toggle
+-- ===================================================================================== --
+
+function TSM:ToggleOffersWindow()
+    if TSM.OffersWindow then
+        TSM.OffersWindow:Toggle()
+    end
 end
 
 -- ===================================================================================== --

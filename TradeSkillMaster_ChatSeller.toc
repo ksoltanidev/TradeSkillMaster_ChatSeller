@@ -28,6 +28,8 @@ Features\Gears\GearsTab.lua
 # Features - Transmogs
 Features\Transmogs\Transmogs.lua
 Features\Transmogs\TransmogsTab.lua
+Features\Transmogs\BuyCommand.lua
+Features\Transmogs\OffersWindow.lua
 
 # Integrations
 Integrations\BagnonGuildBank.lua

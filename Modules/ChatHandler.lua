@@ -16,17 +16,19 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
     local lowerPrefix = strlower(prefix)
 
     -- Build patterns based on whether prefix is empty or not
-    local pricePattern, gearPattern, tmogPattern
+    local pricePattern, gearPattern, tmogPattern, buyPattern
     if lowerPrefix == "" then
-        -- No prefix: commands start directly with "price", "gear", or "tmog"
+        -- No prefix: commands start directly with "price", "gear", "tmog", or "buy"
         pricePattern = "^price%s+"
         gearPattern = "^gear%s*(.*)$"
         tmogPattern = "^tmog%s*(.*)$"
+        buyPattern = "^buy%s+"
     else
-        -- With prefix: "prefix price", "prefix gear", or "prefix tmog"
+        -- With prefix: "prefix price", "prefix gear", "prefix tmog", or "prefix buy"
         pricePattern = "^" .. lowerPrefix .. "%s+price%s+"
         gearPattern = "^" .. lowerPrefix .. "%s+gear%s*(.*)$"
         tmogPattern = "^" .. lowerPrefix .. "%s+tmog%s*(.*)$"
+        buyPattern = "^" .. lowerPrefix .. "%s+buy%s+"
     end
 
     -- Check for price command
@@ -46,6 +48,14 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
         local gearArgs = strmatch(lowerMessage, gearPattern)
         if gearArgs then
             TSM:HandleGearCommand(sender, gearArgs)
+            return
+        end
+    end
+
+    -- Check for buy command (before tmog to avoid pattern overlap)
+    if TSM.db.profile.transmogs.enabled then
+        if strmatch(lowerMessage, buyPattern) then
+            TSM:HandleBuyCommand(sender, message)
             return
         end
     end
