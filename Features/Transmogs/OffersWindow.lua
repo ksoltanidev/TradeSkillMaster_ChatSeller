@@ -79,6 +79,9 @@ function OW:CreateFrame()
     local frame = TSMAPI:CreateMovableFrame("TSMChatSellerOffersFrame", frameDefaults)
     frame:SetFrameStrata("HIGH")
     TSMAPI.Design:SetFrameBackdropColor(frame)
+    frame:SetResizable(true)
+    frame:SetMinResize(500, 220)
+    frame:SetMaxResize(1000, 600)
 
     -- Title
     local title = TSMAPI.GUI:CreateLabel(frame)
@@ -140,10 +143,40 @@ function OW:CreateFrame()
     -- Create rows
     OW:CreateRows(stContainer)
 
+    -- Resize handle (bottom-right corner)
+    local resizeHandle = CreateFrame("Frame", nil, frame)
+    resizeHandle:SetSize(16, 16)
+    resizeHandle:SetPoint("BOTTOMRIGHT", -1, 1)
+    resizeHandle:EnableMouse(true)
+    resizeHandle:SetScript("OnMouseDown", function()
+        frame:StartSizing("BOTTOMRIGHT")
+    end)
+    resizeHandle:SetScript("OnMouseUp", function()
+        frame:StopMovingOrSizing()
+        frame:SavePositionAndSize()
+        OW:UpdateLayout()
+    end)
+    -- Resize grip texture
+    local gripTex = resizeHandle:CreateTexture(nil, "OVERLAY")
+    gripTex:SetAllPoints()
+    gripTex:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    resizeHandle:SetScript("OnEnter", function()
+        gripTex:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+    end)
+    resizeHandle:SetScript("OnLeave", function()
+        gripTex:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    end)
+
+    -- Hook OnSizeChanged for live resize
+    frame:SetScript("OnSizeChanged", function(self)
+        self:SavePositionAndSize()
+        OW:UpdateLayout()
+    end)
+
     -- "Gather All" button at the bottom
     local gatherBtn = TSMAPI.GUI:CreateButton(frame, 14)
     gatherBtn:SetPoint("BOTTOMLEFT", 3, 3)
-    gatherBtn:SetPoint("BOTTOMRIGHT", -3, 3)
+    gatherBtn:SetPoint("BOTTOMRIGHT", -18, 3)
     gatherBtn:SetHeight(20)
     gatherBtn:SetText(L["Gather All"])
     gatherBtn:SetScript("OnClick", function()
@@ -361,6 +394,31 @@ function OW:CreateRows(parent)
         row:Hide()
         tinsert(private.rows, row)
     end
+end
+
+-- ===================================================================================== --
+-- Dynamic Layout Update (on resize)
+-- ===================================================================================== --
+
+function OW:UpdateLayout()
+    if not private.frame then return end
+    local contentWidth = private.frame:GetWidth() - 30
+
+    -- Update header columns
+    for i, col in ipairs(private.headCols) do
+        col:SetWidth(COL_INFO[i].width * contentWidth)
+    end
+
+    -- Update row widgets
+    for _, row in ipairs(private.rows) do
+        row.itemBtn:SetWidth(COL_INFO[1].width * contentWidth)
+        row.buyerText:SetWidth(COL_INFO[2].width * contentWidth)
+        row.priceBox:SetWidth(COL_INFO[3].width * contentWidth - 8)
+        row.statusText:SetWidth(COL_INFO[4].width * contentWidth)
+        row.actionsFrame:SetWidth(COL_INFO[5].width * contentWidth)
+    end
+
+    OW:DrawRows()
 end
 
 -- ===================================================================================== --
