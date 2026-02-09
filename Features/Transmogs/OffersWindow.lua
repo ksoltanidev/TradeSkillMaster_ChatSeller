@@ -173,7 +173,7 @@ function OW:CreateFrame()
         OW:UpdateLayout()
     end)
 
-    -- Bottom buttons row (Add Offer + Gather All side by side)
+    -- Bottom button
     local addOfferBtn = TSMAPI.GUI:CreateButton(frame, 14)
     addOfferBtn:SetPoint("BOTTOMLEFT", 3, 3)
     addOfferBtn:SetWidth(100)
@@ -181,15 +181,6 @@ function OW:CreateFrame()
     addOfferBtn:SetText(L["Add Offer"])
     addOfferBtn:SetScript("OnClick", function()
         OW:ShowAddOfferModal()
-    end)
-
-    local gatherBtn = TSMAPI.GUI:CreateButton(frame, 14)
-    gatherBtn:SetPoint("BOTTOMLEFT", addOfferBtn, "BOTTOMRIGHT", 4, 0)
-    gatherBtn:SetPoint("BOTTOMRIGHT", -18, 3)
-    gatherBtn:SetHeight(20)
-    gatherBtn:SetText(L["Gather All"])
-    gatherBtn:SetScript("OnClick", function()
-        TSM:Print("Gather All - coming soon")
     end)
 
     private.frame = frame
@@ -367,17 +358,25 @@ function OW:CreateRows(parent)
         refuseBtn:SetHighlightFontObject(GameFontHighlightSmall)
         row.refuseBtn = refuseBtn
 
-        -- "Accepted" state buttons: Ask How + CoD + Cancel
+        -- "Accepted"/"CoD Sent" state buttons: Gather + Ask How + CoD + Cancel + Confirm
+        local gatherBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+        gatherBtn:SetSize(45, private.ROW_HEIGHT - 6)
+        gatherBtn:SetPoint("LEFT", 2, 0)
+        gatherBtn:SetText(L["Gather"])
+        gatherBtn:SetNormalFontObject(GameFontNormalSmall)
+        gatherBtn:SetHighlightFontObject(GameFontHighlightSmall)
+        row.gatherBtn = gatherBtn
+
         local askHowBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        askHowBtn:SetSize(60, private.ROW_HEIGHT - 6)
-        askHowBtn:SetPoint("LEFT", 2, 0)
+        askHowBtn:SetSize(50, private.ROW_HEIGHT - 6)
+        askHowBtn:SetPoint("LEFT", gatherBtn, "RIGHT", 4, 0)
         askHowBtn:SetText(L["Ask How"])
         askHowBtn:SetNormalFontObject(GameFontNormalSmall)
         askHowBtn:SetHighlightFontObject(GameFontHighlightSmall)
         row.askHowBtn = askHowBtn
 
         local codBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        codBtn:SetSize(45, private.ROW_HEIGHT - 6)
+        codBtn:SetSize(35, private.ROW_HEIGHT - 6)
         codBtn:SetPoint("LEFT", askHowBtn, "RIGHT", 4, 0)
         codBtn:SetText(L["CoD"])
         codBtn:SetNormalFontObject(GameFontNormalSmall)
@@ -385,7 +384,7 @@ function OW:CreateRows(parent)
         row.codBtn = codBtn
 
         local cancelBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        cancelBtn:SetSize(50, private.ROW_HEIGHT - 6)
+        cancelBtn:SetSize(42, private.ROW_HEIGHT - 6)
         cancelBtn:SetPoint("LEFT", codBtn, "RIGHT", 4, 0)
         cancelBtn:SetText(L["Cancel"])
         cancelBtn:SetNormalFontObject(GameFontNormalSmall)
@@ -394,7 +393,7 @@ function OW:CreateRows(parent)
 
         -- "Confirm" button (shown on all statuses except "Offered")
         local confirmBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        confirmBtn:SetSize(60, private.ROW_HEIGHT - 6)
+        confirmBtn:SetSize(50, private.ROW_HEIGHT - 6)
         confirmBtn:SetPoint("LEFT", cancelBtn, "RIGHT", 4, 0)
         confirmBtn:SetText(L["Confirm"])
         confirmBtn:SetNormalFontObject(GameFontNormalSmall)
@@ -404,6 +403,7 @@ function OW:CreateRows(parent)
         -- Initially hide all action buttons
         acceptBtn:Hide()
         refuseBtn:Hide()
+        gatherBtn:Hide()
         askHowBtn:Hide()
         codBtn:Hide()
         cancelBtn:Hide()
@@ -508,6 +508,7 @@ function OW:SetupActionButtons(row, offer, offerIndex)
     -- Hide all first
     row.acceptBtn:Hide()
     row.refuseBtn:Hide()
+    row.gatherBtn:Hide()
     row.askHowBtn:Hide()
     row.codBtn:Hide()
     row.cancelBtn:Hide()
@@ -525,11 +526,15 @@ function OW:SetupActionButtons(row, offer, offerIndex)
         end)
 
     elseif status == "Accepted" or status == "CoD Sent" then
+        row.gatherBtn:Show()
         row.askHowBtn:Show()
         row.codBtn:Show()
         row.cancelBtn:Show()
         row.confirmBtn:Show()
 
+        row.gatherBtn:SetScript("OnClick", function()
+            OW:GatherItem(offerIndex)
+        end)
         row.askHowBtn:SetScript("OnClick", function()
             OW:AskHow(offerIndex)
         end)
@@ -656,6 +661,97 @@ function OW:SendCoD(offerIndex)
 
     -- Send the mail
     SendMail(offer.buyer, offer.itemName or "CoD", "")
+end
+
+-- ===================================================================================== --
+-- Gather Item from Bank
+-- ===================================================================================== --
+
+function OW:IsBankOpen()
+    if BagnonFrameguildbank and BagnonFrameguildbank:IsVisible() then
+        return true
+    elseif BagnonFramebank and BagnonFramebank:IsVisible() then
+        return true
+    elseif GuildBankFrame and GuildBankFrame:IsVisible() then
+        return true
+    elseif BankFrame and BankFrame:IsVisible() then
+        return true
+    end
+    return false
+end
+
+function OW:FindItemStringInBank(itemName)
+    -- Check guild bank (covers personal/realm bank on Ascension too)
+    if (GuildBankFrame and GuildBankFrame:IsVisible()) or (BagnonFrameguildbank and BagnonFrameguildbank:IsVisible()) then
+        for tab = 1, GetNumGuildBankTabs() do
+            for slot = 1, (MAX_GUILDBANK_SLOTS_PER_TAB or 98) do
+                local link = GetGuildBankItemLink(tab, slot)
+                if link then
+                    local name = GetItemInfo(link)
+                    if name and name == itemName then
+                        return TSMAPI:GetBaseItemString(link, true)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Check regular bank
+    if (BankFrame and BankFrame:IsVisible()) or (BagnonFramebank and BagnonFramebank:IsVisible()) then
+        for _, bag in ipairs({-1, 5, 6, 7, 8, 9, 10, 11}) do
+            local numSlots = GetContainerNumSlots(bag)
+            for slot = 1, numSlots do
+                local link = GetContainerItemLink(bag, slot)
+                if link then
+                    local name = GetItemInfo(link)
+                    if name and name == itemName then
+                        return TSMAPI:GetBaseItemString(link, true)
+                    end
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+function OW:GatherItem(offerIndex)
+    local offer = TSM.db.profile.transmogs.offerList[offerIndex]
+    if not offer then return end
+
+    -- Check if a bank is open
+    if not OW:IsBankOpen() then
+        TSM:Print(L["No bank is open."])
+        return
+    end
+
+    -- Get itemString from the offer's itemLink
+    local itemString = nil
+    if offer.itemLink then
+        itemString = TSMAPI:GetBaseItemString(offer.itemLink, true)
+    end
+
+    -- Fallback: scan the bank by item name
+    if not itemString and offer.itemName then
+        itemString = OW:FindItemStringInBank(offer.itemName)
+    end
+
+    if not itemString then
+        TSM:Print(L["Item not found in bank."])
+        return
+    end
+
+    -- Move 1 item from bank to bags
+    local moveTable = { [itemString] = 1 }
+    local itemDisplay = offer.itemLink or offer.itemName or "item"
+
+    TSM:Print(format(L["Gathering %s from bank..."], itemDisplay))
+
+    TSMAPI:MoveItems(moveTable, function(msg)
+        if msg then
+            TSM:Print(msg)
+        end
+    end, true) -- includeSoulbound = true (transmog items may be soulbound)
 end
 
 -- ===================================================================================== --
