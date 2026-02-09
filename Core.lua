@@ -41,6 +41,8 @@ local savedDBDefaults = {
             rewardGoldDiscount = 100,   -- Gold discount when threshold reached
             completedOffers = {},       -- Archived completed offers
             maxCompletedOffers = 200,   -- Cap on completed offer history
+            playerReferrers = {},       -- { ["ReferredPlayer"] = "ReferrerPlayer" }
+            referrerBonusPct = 20,      -- % of points awarded to the referrer
         },
     },
 }

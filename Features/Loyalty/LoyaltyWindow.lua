@@ -35,8 +35,9 @@ local HEAD_HEIGHT = 22
 local HEAD_SPACE = 2
 
 local COL_INFO = {
-    { name = L["Player"], width = 0.55 },
-    { name = L["Points"], width = 0.45 },
+    { name = L["Player"],   width = 0.35 },
+    { name = L["Points"],   width = 0.30 },
+    { name = L["Referrer"], width = 0.35 },
 }
 
 -- ===================================================================================== --
@@ -75,13 +76,14 @@ end
 
 function LW:BuildSortedPlayers()
     local playerPoints = TSM.db.profile.loyalty.playerPoints
+    local referrers = TSM.db.profile.loyalty.playerReferrers
     local filter = strlower(strtrim(private.searchFilter or ""))
 
     wipe(private.sortedPlayers)
 
     for name, points in pairs(playerPoints) do
         if filter == "" or strfind(strlower(name), filter, 1, true) then
-            tinsert(private.sortedPlayers, { name = name, points = points })
+            tinsert(private.sortedPlayers, { name = name, points = points, referrer = referrers[name] or "" })
         end
     end
 
@@ -378,6 +380,17 @@ function LW:CreateRows(parent)
         removeBtn:SetHighlightFontObject(GameFontHighlightSmall)
         row.removeBtn = removeBtn
 
+        -- Col 3: Referrer (FontString, read-only)
+        local referrerText = row:CreateFontString(nil, "OVERLAY")
+        referrerText:SetFont(TSMAPI.Design:GetContentFont("small"))
+        referrerText:SetJustifyH("LEFT")
+        referrerText:SetJustifyV("CENTER")
+        referrerText:SetPoint("TOPLEFT", removeBtn, "TOPRIGHT", 6, 3)
+        referrerText:SetWidth(COL_INFO[3].width * contentWidth - 6)
+        referrerText:SetHeight(private.ROW_HEIGHT)
+        TSMAPI.Design:SetWidgetTextColor(referrerText)
+        row.referrerText = referrerText
+
         row:Hide()
         tinsert(private.rows, row)
     end
@@ -400,6 +413,7 @@ function LW:UpdateLayout()
     for _, row in ipairs(private.rows) do
         row.nameText:SetWidth(COL_INFO[1].width * contentWidth - 6)
         row.pointsBox:SetWidth(COL_INFO[2].width * contentWidth - 40)
+        row.referrerText:SetWidth(COL_INFO[3].width * contentWidth - 6)
     end
 
     LW:DrawRows()
@@ -431,6 +445,9 @@ function LW:DrawRows()
             -- Points column
             row.pointsBox:SetText(tostring(entry.points))
             row.pointsBox:SetTextColor(1, 1, 1)
+
+            -- Referrer column
+            row.referrerText:SetText(entry.referrer or "")
 
             -- Remove button callback
             row.removeBtn:SetScript("OnClick", function()

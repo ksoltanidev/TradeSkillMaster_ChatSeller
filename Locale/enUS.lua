@@ -173,3 +173,14 @@ L["Remove"] = true
 L["You've been credited %d loyalty points! At %d points, you'll be granted a %dg discount on the item of your choice!"] = true
 L["Anything you like? Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."] = true
 L["At %dg of purchase, you'll be rewarded with %dg discount with the loyalty program. Send \"%sloyalty\" to learn more."] = true
+
+-- Referral Program
+L["%s has been set as your referrer! They will earn bonus points from your purchases."] = true
+L["%s set %s as their referrer."] = true
+L["Please specify a player name: \"%sref [name]\"."] = true
+L["You cannot set yourself as your own referrer."] = true
+L["Referrer bonus: %s earned %d points from %s's purchase."] = true
+L["Share the shop with your friends! Tell them to send me \"%sref [your name]\" and you'll receive %d%% of the points they earn!"] = true
+L["Referrer"] = true
+L["%s added you as their referrer! You will earn %d%% of the loyalty points they make!"] = true
+L["You've been credited %d referral points from %s's purchase! Send \"%sloyalty\" to view your balance."] = true

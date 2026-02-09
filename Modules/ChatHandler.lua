@@ -16,27 +16,38 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
     local lowerPrefix = strlower(prefix)
 
     -- Build patterns based on whether prefix is empty or not
-    local pricePattern, gearPattern, tmogPattern, buyPattern, loyaltyPattern
+    local pricePattern, gearPattern, tmogPattern, buyPattern, loyaltyPattern, refPattern
     if lowerPrefix == "" then
-        -- No prefix: commands start directly with "price", "gear", "tmog", "buy", or "loyalty"
+        -- No prefix: commands start directly with "price", "gear", "tmog", "buy", "loyalty", or "ref"
         pricePattern = "^price%s+"
         gearPattern = "^gear%s*(.*)$"
         tmogPattern = "^tmog%s*(.*)$"
         buyPattern = "^buy%s+"
         loyaltyPattern = "^loyalty%s*$"
+        refPattern = "^ref%s+(.+)$"
     else
-        -- With prefix: "prefix price", "prefix gear", "prefix tmog", "prefix buy", or "prefix loyalty"
+        -- With prefix: "prefix price", "prefix gear", "prefix tmog", "prefix buy", "prefix loyalty", or "prefix ref"
         pricePattern = "^" .. lowerPrefix .. "%s+price%s+"
         gearPattern = "^" .. lowerPrefix .. "%s+gear%s*(.*)$"
         tmogPattern = "^" .. lowerPrefix .. "%s+tmog%s*(.*)$"
         buyPattern = "^" .. lowerPrefix .. "%s+buy%s+"
         loyaltyPattern = "^" .. lowerPrefix .. "%s+loyalty%s*$"
+        refPattern = "^" .. lowerPrefix .. "%s+ref%s+(.+)$"
     end
 
     -- Check for loyalty command (loyalty program)
     if TSM.db.profile.loyalty.enabled then
         if strmatch(lowerMessage, loyaltyPattern) then
             TSM:HandleLoyaltyCommand(sender)
+            return
+        end
+    end
+
+    -- Check for ref command (referral program)
+    if TSM.db.profile.loyalty.enabled then
+        local refArgs = strmatch(lowerMessage, refPattern)
+        if refArgs then
+            TSM:HandleRefCommand(sender, strtrim(refArgs))
             return
         end
     end

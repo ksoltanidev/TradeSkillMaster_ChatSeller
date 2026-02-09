@@ -6,6 +6,12 @@
 local TSM = select(2, ...)
 local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ChatSeller")
 
+-- Normalize player name to WoW canonical format: first letter uppercase, rest lowercase
+local function NormalizeName(name)
+    if not name or name == "" then return name end
+    return strupper(strsub(name, 1, 1)) .. strlower(strsub(name, 2))
+end
+
 -- ===================================================================================== --
 -- Award Loyalty Points
 -- ===================================================================================== --
@@ -19,6 +25,7 @@ function TSM:AwardLoyaltyPoints(buyer, copperAmount)
         return 0, 0
     end
 
+    buyer = NormalizeName(buyer)
     local loyalty = TSM.db.profile.loyalty
     local pointsPerGold = loyalty.pointsPerGold or 10
     local pointsAwarded = math.floor(copperAmount * pointsPerGold / 10000)
@@ -64,6 +71,34 @@ function TSM:CompleteOffer(offerIndex)
         )
     end
 
+    -- Award referrer bonus points
+    if pointsAwarded > 0 and offer.buyer then
+        local normalizedBuyer = NormalizeName(offer.buyer)
+        local referrer = loyalty.playerReferrers and loyalty.playerReferrers[normalizedBuyer]
+        if referrer then referrer = NormalizeName(referrer) end
+        if referrer then
+            local bonusPct = loyalty.referrerBonusPct or 20
+            local referrerBonus = math.floor(pointsAwarded * bonusPct / 100)
+            if referrerBonus > 0 then
+                loyalty.playerPoints[referrer] = (loyalty.playerPoints[referrer] or 0) + referrerBonus
+
+                -- Whisper the referrer about their bonus points
+                local prefix = TSM.db.profile.commandPrefix or ""
+                local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+                SendChatMessage(
+                    format(L["You've been credited %d referral points from %s's purchase! Send \"%sloyalty\" to view your balance."],
+                        referrerBonus, offer.buyer, cmdPrefix),
+                    "WHISPER", nil, referrer
+                )
+
+                TSM:Print(format(
+                    L["Referrer bonus: %s earned %d points from %s's purchase."],
+                    referrer, referrerBonus, offer.buyer
+                ))
+            end
+        end
+    end
+
     -- Remove from active offer list
     tremove(offerList, offerIndex)
 
@@ -105,6 +140,7 @@ end
 -- @param sender: player name who whispered
 function TSM:HandleLoyaltyCommand(sender)
     local loyalty = TSM.db.profile.loyalty
+    sender = NormalizeName(sender)
     local currentPoints = loyalty.playerPoints[sender] or 0
     local threshold = loyalty.rewardThreshold or 10000
     local discount = loyalty.rewardGoldDiscount or 100
@@ -137,4 +173,70 @@ function TSM:HandleLoyaltyCommand(sender)
             "WHISPER", nil, sender
         )
     end
+
+    -- Message 4: Referral program promo
+    local prefix = TSM.db.profile.commandPrefix or ""
+    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+    local bonusPct = loyalty.referrerBonusPct or 20
+    SendChatMessage(
+        format(L["Share the shop with your friends! Tell them to send me \"%sref [your name]\" and you'll receive %d%% of the points they earn!"],
+            cmdPrefix, bonusPct),
+        "WHISPER", nil, sender
+    )
+end
+
+-- ===================================================================================== --
+-- Referral Command
+-- ===================================================================================== --
+
+-- Handle the "ref" whisper command: gem ref [referrerName]
+-- @param sender: player name who whispered
+-- @param refName: the referrer name provided
+function TSM:HandleRefCommand(sender, refName)
+    local loyalty = TSM.db.profile.loyalty
+    local prefix = TSM.db.profile.commandPrefix or ""
+    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+
+    -- Validate referrer name provided
+    refName = strtrim(refName or "")
+    if refName == "" then
+        SendChatMessage(
+            format(L["Please specify a player name: \"%sref [name]\"."], cmdPrefix),
+            "WHISPER", nil, sender
+        )
+        return
+    end
+
+    -- Can't refer yourself
+    if strlower(refName) == strlower(sender) then
+        SendChatMessage(
+            L["You cannot set yourself as your own referrer."],
+            "WHISPER", nil, sender
+        )
+        return
+    end
+
+    -- Normalize names for consistent storage
+    local normalizedSender = NormalizeName(sender)
+    local normalizedRef = NormalizeName(refName)
+
+    -- Set referrer (overwrites silently if already set)
+    loyalty.playerReferrers[normalizedSender] = normalizedRef
+
+    -- Whisper confirmation to the referred player
+    SendChatMessage(
+        format(L["%s has been set as your referrer! They will earn bonus points from your purchases."], normalizedRef),
+        "WHISPER", nil, sender
+    )
+
+    -- Whisper the referrer to notify them
+    local bonusPct = loyalty.referrerBonusPct or 20
+    SendChatMessage(
+        format(L["%s added you as their referrer! You will earn %d%% of the loyalty points they make!"],
+            sender, bonusPct),
+        "WHISPER", nil, normalizedRef
+    )
+
+    -- Print to seller's chat
+    TSM:Print(format(L["%s set %s as their referrer."], normalizedSender, normalizedRef))
 end
