@@ -116,6 +116,20 @@ function TSM:HandleBuyCommand(sender, message)
     local priceGold = math.floor(offeredPriceCopper / 10000)
     SendChatMessage(format(L["Offer received for %s at %sg. I'll get back to you!"], item.link or item.name, priceGold), "WHISPER", nil, sender)
 
+    -- Loyalty program promo
+    local loyalty = TSM.db.profile.loyalty
+    if loyalty.enabled then
+        local prefix = TSM.db.profile.commandPrefix or ""
+        local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+        local goldForReward = (loyalty.rewardThreshold or 10000) / (loyalty.pointsPerGold or 10)
+        local discount = loyalty.rewardGoldDiscount or 100
+        SendChatMessage(
+            format(L["At %dg of purchase, you'll be rewarded with %dg discount with the loyalty program. Send \"%sloyalty\" to learn more."],
+                goldForReward, discount, cmdPrefix),
+            "WHISPER", nil, sender
+        )
+    end
+
     -- Print notification for the seller
     TSM:Print(format("New offer from %s for %s at %sg", sender, item.link or item.name, priceGold))
 

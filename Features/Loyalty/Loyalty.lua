@@ -69,6 +69,16 @@ function TSM:CompleteOffer(offerIndex)
                 pointsAwarded, loyalty.rewardThreshold or 10000, loyalty.rewardGoldDiscount or 100),
             "WHISPER", nil, offer.buyer
         )
+
+        -- Referral program promo
+        local prefix = TSM.db.profile.commandPrefix or ""
+        local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+        local bonusPct = loyalty.referrerBonusPct or 20
+        SendChatMessage(
+            format(L["Share the shop with your friends! Tell them to send me \"%sref [your name]\" and you'll receive %d%% of the points they earn!"],
+                cmdPrefix, bonusPct),
+            "WHISPER", nil, offer.buyer
+        )
     end
 
     -- Award referrer bonus points

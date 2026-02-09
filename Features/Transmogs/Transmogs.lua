@@ -328,22 +328,11 @@ function TSM:SendTransmogResponses(sender, items)
 
     -- Message 1: How to buy
     SendChatMessage(
-        format(L["Anything you like? Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."],
+        format(L["Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."],
             cmdPrefix, cmdPrefix),
         "WHISPER", nil, sender
     )
 
-    -- Message 2: Loyalty program
-    local loyalty = TSM.db.profile.loyalty
-    if loyalty.enabled then
-        local goldForReward = (loyalty.rewardThreshold or 10000) / (loyalty.pointsPerGold or 10)
-        local discount = loyalty.rewardGoldDiscount or 100
-        SendChatMessage(
-            format(L["At %dg of purchase, you'll be rewarded with %dg discount with the loyalty program. Send \"%sloyalty\" to learn more."],
-                goldForReward, discount, cmdPrefix),
-            "WHISPER", nil, sender
-        )
-    end
 end
 
 -- Send help message for tmog command
@@ -356,5 +345,5 @@ function TSM:SendTransmogHelpMessage(sender)
     SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown", "WHISPER", nil, sender)
     SendChatMessage("Armor subtypes: head, shoulders, chest, wrist, gloves, waist, legs, feet, back", "WHISPER", nil, sender)
     SendChatMessage("Name filter: use quotes for multi-word search, e.g. " .. cmdPrefix .. "tmog \"fire sword\"", "WHISPER", nil, sender)
-    SendChatMessage("Example: '" .. cmdPrefix .. "tmog weapon sword' or '" .. cmdPrefix .. "tmog name fire'", "WHISPER", nil, sender)
+    SendChatMessage("Example: '" .. cmdPrefix .. "tmog weapon sword' or '" .. cmdPrefix .. "tmog fire'", "WHISPER", nil, sender)
 end

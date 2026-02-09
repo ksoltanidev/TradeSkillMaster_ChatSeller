@@ -171,7 +171,7 @@ L["Remove"] = true
 
 -- Loyalty Whisper Notifications
 L["You've been credited %d loyalty points! At %d points, you'll be granted a %dg discount on the item of your choice!"] = true
-L["Anything you like? Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."] = true
+L["Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."] = true
 L["At %dg of purchase, you'll be rewarded with %dg discount with the loyalty program. Send \"%sloyalty\" to learn more."] = true
 
 -- Referral Program
