@@ -25,6 +25,10 @@ Features\Gears\GearsData.lua
 Features\Gears\Gears.lua
 Features\Gears\GearsTab.lua
 
+# Features - Loyalty
+Features\Loyalty\Loyalty.lua
+Features\Loyalty\LoyaltyWindow.lua
+
 # Features - Transmogs
 Features\Transmogs\Transmogs.lua
 Features\Transmogs\TransmogsTab.lua

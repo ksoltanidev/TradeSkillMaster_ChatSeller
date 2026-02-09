@@ -93,12 +93,7 @@ local function ScanInboxForCoDReturns()
                 if offer.status == "CoD Sent" and offer.buyer and offer.itemName and offer.offeredPrice then
                     local offerKey = MakeMatchKey(offer.buyer, offer.itemName, offer.offeredPrice)
                     if offerKey == key then
-                        local itemName = offer.itemLink or offer.itemName or "item"
-                        local buyer = offer.buyer or "?"
-                        local priceGold = math.floor((offer.offeredPrice or 0) / 10000)
-
-                        tremove(offerList, i)
-                        TSM:Print(format(L["Auto-confirmed sale: %s to %s for %sg."], itemName, buyer, priceGold))
+                        TSM:CompleteOffer(i)
                         needRefresh = true
                         break
                     end

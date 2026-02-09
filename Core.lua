@@ -33,6 +33,15 @@ local savedDBDefaults = {
             itemHistory = {},   -- { ["Item Name"] = { price = copper, tmogType = "weapon", tmogSubType = "sword" } }
             offerList = {},     -- {itemName, itemLink, buyer, offeredPrice, setPrice, isUnderSetPrice, status, timestamp}
         },
+        loyalty = {
+            enabled = true,             -- Enable/disable loyalty points system
+            playerPoints = {},          -- { ["PlayerName"] = pointsInteger }
+            pointsPerGold = 10,         -- Points awarded per gold spent
+            rewardThreshold = 10000,    -- Points needed for reward
+            rewardGoldDiscount = 100,   -- Gold discount when threshold reached
+            completedOffers = {},       -- Archived completed offers
+            maxCompletedOffers = 200,   -- Cap on completed offer history
+        },
     },
 }
 
@@ -94,6 +103,13 @@ function TSM:RegisterModule()
                 TSM:ToggleOffersWindow()
             end
         },
+        {
+            key = "loyalty",
+            label = L["Toggle Loyalty Points window"],
+            callback = function()
+                TSM:ToggleLoyaltyWindow()
+            end
+        },
     }
 
     TSMAPI:NewModule(TSM)
@@ -106,6 +122,12 @@ end
 function TSM:ToggleOffersWindow()
     if TSM.OffersWindow then
         TSM.OffersWindow:Toggle()
+    end
+end
+
+function TSM:ToggleLoyaltyWindow()
+    if TSM.LoyaltyWindow then
+        TSM.LoyaltyWindow:Toggle()
     end
 end
 

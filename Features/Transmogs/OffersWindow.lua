@@ -574,7 +574,7 @@ function OW:CancelOffer(offerIndex)
 end
 
 function OW:ConfirmOffer(offerIndex)
-    tremove(TSM.db.profile.transmogs.offerList, offerIndex)
+    TSM:CompleteOffer(offerIndex)
     OW:Refresh()
 end
 

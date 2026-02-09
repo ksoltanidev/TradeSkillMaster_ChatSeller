@@ -321,6 +321,29 @@ function TSM:SendTransmogResponses(sender, items)
         local response = table.concat(parts, ", ")
         SendChatMessage(response, "WHISPER", nil, sender)
     end
+
+    -- Promo messages
+    local prefix = TSM.db.profile.commandPrefix or ""
+    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+
+    -- Message 1: How to buy
+    SendChatMessage(
+        format(L["Anything you like? Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."],
+            cmdPrefix, cmdPrefix),
+        "WHISPER", nil, sender
+    )
+
+    -- Message 2: Loyalty program
+    local loyalty = TSM.db.profile.loyalty
+    if loyalty.enabled then
+        local goldForReward = (loyalty.rewardThreshold or 10000) / (loyalty.pointsPerGold or 10)
+        local discount = loyalty.rewardGoldDiscount or 100
+        SendChatMessage(
+            format(L["At %dg of purchase, you'll be rewarded with %dg discount with the loyalty program. Send \"%sloyalty\" to learn more."],
+                goldForReward, discount, cmdPrefix),
+            "WHISPER", nil, sender
+        )
+    end
 end
 
 -- Send help message for tmog command

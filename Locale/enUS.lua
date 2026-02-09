@@ -138,3 +138,38 @@ L["Confirm"] = true
 
 -- Mail CoD Auto-Confirm
 L["Auto-confirmed sale: %s to %s for %sg."] = true
+
+-- Loyalty Program
+L["Loyalty Points"] = true
+L["Enable Loyalty Program"] = true
+L["Loyalty Points: You have %d points."] = true
+L["You earn %d points for every gold spent."] = true
+L["You have reached %d points! You can claim a %dg discount on your next purchase. Just mention it when buying!"] = true
+L["At %d points, you get a %dg discount on an item of your choice. You need %d more points!"] = true
+L["Sale completed: %s to %s for %sg. Awarded %d loyalty points (total: %d)."] = true
+L["Sale completed: %s to %s for %sg."] = true
+L["Loyalty Program Settings"] = true
+L["Configure the loyalty points system for returning customers."] = true
+L["Points Per Gold"] = true
+L["Reward Threshold"] = true
+L["Reward Discount (gold)"] = true
+
+-- Loyalty Window
+L["Loyalty Points Manager"] = true
+L["Toggle Loyalty Points window"] = true
+L["Player"] = true
+L["Points"] = true
+L["Search by player name..."] = true
+L["Add Player"] = true
+L["Player name"] = true
+L["Please enter a player name."] = true
+L["Player %s already exists with %d points."] = true
+L["Added %s with %d loyalty points."] = true
+L["Updated %s to %d loyalty points."] = true
+L["Removed %s from loyalty program."] = true
+L["Remove"] = true
+
+-- Loyalty Whisper Notifications
+L["You've been credited %d loyalty points! At %d points, you'll be granted a %dg discount on the item of your choice!"] = true
+L["Anything you like? Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."] = true
+L["At %dg of purchase, you'll be rewarded with %dg discount with the loyalty program. Send \"%sloyalty\" to learn more."] = true

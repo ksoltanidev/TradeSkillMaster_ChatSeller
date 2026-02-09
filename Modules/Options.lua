@@ -76,6 +76,46 @@ function Options:LoadOptionsTab(container)
                         },
                     },
                 },
+                {
+                    type = "InlineGroup",
+                    title = L["Loyalty Program Settings"],
+                    layout = "Flow",
+                    fullWidth = true,
+                    children = {
+                        {
+                            type = "Label",
+                            text = L["Configure the loyalty points system for returning customers."],
+                            fullWidth = true,
+                        },
+                        {
+                            type = "HeadingLine",
+                        },
+                        {
+                            type = "CheckBox",
+                            label = L["Enable Loyalty Program"],
+                            settingInfo = { TSM.db.profile.loyalty, "enabled" },
+                            tooltip = L["Configure the loyalty points system for returning customers."],
+                        },
+                        {
+                            type = "EditBox",
+                            label = L["Points Per Gold"],
+                            settingInfo = { TSM.db.profile.loyalty, "pointsPerGold" },
+                            tooltip = L["Points Per Gold"],
+                        },
+                        {
+                            type = "EditBox",
+                            label = L["Reward Threshold"],
+                            settingInfo = { TSM.db.profile.loyalty, "rewardThreshold" },
+                            tooltip = L["Reward Threshold"],
+                        },
+                        {
+                            type = "EditBox",
+                            label = L["Reward Discount (gold)"],
+                            settingInfo = { TSM.db.profile.loyalty, "rewardGoldDiscount" },
+                            tooltip = L["Reward Discount (gold)"],
+                        },
+                    },
+                },
             },
         },
     }
