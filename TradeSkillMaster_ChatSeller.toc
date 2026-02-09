@@ -34,6 +34,9 @@ Features\Transmogs\Transmogs.lua
 Features\Transmogs\TransmogsTab.lua
 Features\Transmogs\BuyCommand.lua
 Features\Transmogs\OffersWindow.lua
+Features\Transmogs\OfferActions.lua
+Features\Transmogs\OfferGather.lua
+Features\Transmogs\OfferModal.lua
 
 # Integrations
 Integrations\BagnonGuildBank.lua
