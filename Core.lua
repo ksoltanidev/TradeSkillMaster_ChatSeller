@@ -36,6 +36,7 @@ local savedDBDefaults = {
         loyalty = {
             enabled = true,             -- Enable/disable loyalty points system
             playerPoints = {},          -- { ["PlayerName"] = pointsInteger }
+            playerTotalPoints = {},     -- { ["PlayerName"] = lifetimeTotalPoints } (never decremented)
             pointsPerGold = 10,         -- Points awarded per gold spent
             rewardThreshold = 10000,    -- Points needed for reward
             rewardGoldDiscount = 100,   -- Gold discount when threshold reached

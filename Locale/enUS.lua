@@ -184,3 +184,12 @@ L["Share the shop with your friends! Tell them to send me \"%sref [your name]\" 
 L["Referrer"] = true
 L["%s added you as their referrer! You will earn %d%% of the loyalty points they make!"] = true
 L["You've been credited %d referral points from %s's purchase! Send \"%sloyalty\" to view your balance."] = true
+
+-- Total Points / Leaderboard
+L["Total Pts"] = true
+L["Updated %s to %d total loyalty points."] = true
+L["You have earned a total of %d points, you are %s."] = true
+L["You have earned a total of %d points."] = true
+L["Top %d - %s with %d points."] = true
+L["You are ranked %s! Send \"%srank\" to see the Top 3 buyers."] = true
+L["Send \"%srank\" to see the Top 3 buyers."] = true

@@ -29,15 +29,16 @@ local private = {
     sortedPlayers = {},
 }
 
-local FRAME_WIDTH = 420
+local FRAME_WIDTH = 520
 local FRAME_HEIGHT = 350
 local HEAD_HEIGHT = 22
 local HEAD_SPACE = 2
 
 local COL_INFO = {
-    { name = L["Player"],   width = 0.35 },
-    { name = L["Points"],   width = 0.30 },
-    { name = L["Referrer"], width = 0.35 },
+    { name = L["Player"],     width = 0.26 },
+    { name = L["Points"],     width = 0.18 },
+    { name = L["Total Pts"],  width = 0.18 },
+    { name = L["Referrer"],   width = 0.26 },
 }
 
 -- ===================================================================================== --
@@ -76,6 +77,7 @@ end
 
 function LW:BuildSortedPlayers()
     local playerPoints = TSM.db.profile.loyalty.playerPoints
+    local playerTotalPoints = TSM.db.profile.loyalty.playerTotalPoints
     local referrers = TSM.db.profile.loyalty.playerReferrers
     local filter = strlower(strtrim(private.searchFilter or ""))
 
@@ -83,7 +85,12 @@ function LW:BuildSortedPlayers()
 
     for name, points in pairs(playerPoints) do
         if filter == "" or strfind(strlower(name), filter, 1, true) then
-            tinsert(private.sortedPlayers, { name = name, points = points, referrer = referrers[name] or "" })
+            tinsert(private.sortedPlayers, {
+                name = name,
+                points = points,
+                totalPoints = playerTotalPoints[name] or 0,
+                referrer = referrers[name] or "",
+            })
         end
     end
 
@@ -109,7 +116,7 @@ function LW:CreateFrame()
     frame:SetFrameStrata("HIGH")
     TSMAPI.Design:SetFrameBackdropColor(frame)
     frame:SetResizable(true)
-    frame:SetMinResize(350, 220)
+    frame:SetMinResize(440, 220)
     frame:SetMaxResize(800, 600)
 
     -- Title
@@ -348,10 +355,10 @@ function LW:CreateRows(parent)
         TSMAPI.Design:SetWidgetTextColor(nameText)
         row.nameText = nameText
 
-        -- Col 2: Points (EditBox + Remove button)
+        -- Col 2: Points (EditBox)
         local pointsBox = CreateFrame("EditBox", "TSMLoyaltyPointsBox" .. i, row, "InputBoxTemplate")
         pointsBox:SetPoint("TOPLEFT", nameText, "TOPRIGHT", 2, -3)
-        pointsBox:SetWidth(COL_INFO[2].width * contentWidth - 40)
+        pointsBox:SetWidth(COL_INFO[2].width * contentWidth - 6)
         pointsBox:SetHeight(private.ROW_HEIGHT - 6)
         pointsBox:SetAutoFocus(false)
         pointsBox:SetFont(TSMAPI.Design:GetContentFont("small"))
@@ -371,25 +378,48 @@ function LW:CreateRows(parent)
         end)
         row.pointsBox = pointsBox
 
-        -- Remove button (small X)
-        local removeBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-        removeBtn:SetSize(22, private.ROW_HEIGHT - 6)
-        removeBtn:SetPoint("LEFT", pointsBox, "RIGHT", 4, 0)
-        removeBtn:SetText("X")
-        removeBtn:SetNormalFontObject(GameFontNormalSmall)
-        removeBtn:SetHighlightFontObject(GameFontHighlightSmall)
-        row.removeBtn = removeBtn
+        -- Col 3: Total Points (EditBox)
+        local totalPointsBox = CreateFrame("EditBox", "TSMLoyaltyTotalPtsBox" .. i, row, "InputBoxTemplate")
+        totalPointsBox:SetPoint("TOPLEFT", pointsBox, "TOPRIGHT", 2, 0)
+        totalPointsBox:SetWidth(COL_INFO[3].width * contentWidth - 6)
+        totalPointsBox:SetHeight(private.ROW_HEIGHT - 6)
+        totalPointsBox:SetAutoFocus(false)
+        totalPointsBox:SetFont(TSMAPI.Design:GetContentFont("small"))
+        totalPointsBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        totalPointsBox:SetScript("OnEnterPressed", function(self)
+            local playerName = self:GetParent().playerName
+            if playerName then
+                local newTotal = tonumber(self:GetText())
+                if newTotal and newTotal >= 0 then
+                    newTotal = math.floor(newTotal)
+                    TSM.db.profile.loyalty.playerTotalPoints[playerName] = newTotal
+                    TSM:Print(format(L["Updated %s to %d total loyalty points."], playerName, newTotal))
+                    LW:Refresh()
+                end
+            end
+            self:ClearFocus()
+        end)
+        row.totalPointsBox = totalPointsBox
 
-        -- Col 3: Referrer (FontString, read-only)
+        -- Col 4: Referrer (FontString, read-only)
         local referrerText = row:CreateFontString(nil, "OVERLAY")
         referrerText:SetFont(TSMAPI.Design:GetContentFont("small"))
         referrerText:SetJustifyH("LEFT")
         referrerText:SetJustifyV("CENTER")
-        referrerText:SetPoint("TOPLEFT", removeBtn, "TOPRIGHT", 6, 3)
-        referrerText:SetWidth(COL_INFO[3].width * contentWidth - 6)
+        referrerText:SetPoint("TOPLEFT", totalPointsBox, "TOPRIGHT", 6, 3)
+        referrerText:SetWidth(COL_INFO[4].width * contentWidth - 6)
         referrerText:SetHeight(private.ROW_HEIGHT)
         TSMAPI.Design:SetWidgetTextColor(referrerText)
         row.referrerText = referrerText
+
+        -- Remove button (X) - rightmost position
+        local removeBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+        removeBtn:SetSize(22, private.ROW_HEIGHT - 6)
+        removeBtn:SetPoint("TOPRIGHT", row, "TOPRIGHT", -2, -3)
+        removeBtn:SetText("X")
+        removeBtn:SetNormalFontObject(GameFontNormalSmall)
+        removeBtn:SetHighlightFontObject(GameFontHighlightSmall)
+        row.removeBtn = removeBtn
 
         row:Hide()
         tinsert(private.rows, row)
@@ -412,8 +442,9 @@ function LW:UpdateLayout()
     -- Update row widgets
     for _, row in ipairs(private.rows) do
         row.nameText:SetWidth(COL_INFO[1].width * contentWidth - 6)
-        row.pointsBox:SetWidth(COL_INFO[2].width * contentWidth - 40)
-        row.referrerText:SetWidth(COL_INFO[3].width * contentWidth - 6)
+        row.pointsBox:SetWidth(COL_INFO[2].width * contentWidth - 6)
+        row.totalPointsBox:SetWidth(COL_INFO[3].width * contentWidth - 6)
+        row.referrerText:SetWidth(COL_INFO[4].width * contentWidth - 6)
     end
 
     LW:DrawRows()
@@ -446,12 +477,17 @@ function LW:DrawRows()
             row.pointsBox:SetText(tostring(entry.points))
             row.pointsBox:SetTextColor(1, 1, 1)
 
+            -- Total Points column
+            row.totalPointsBox:SetText(tostring(entry.totalPoints or 0))
+            row.totalPointsBox:SetTextColor(1, 1, 1)
+
             -- Referrer column
             row.referrerText:SetText(entry.referrer or "")
 
             -- Remove button callback
             row.removeBtn:SetScript("OnClick", function()
                 TSM.db.profile.loyalty.playerPoints[entry.name] = nil
+                TSM.db.profile.loyalty.playerTotalPoints[entry.name] = nil
                 TSM:Print(format(L["Removed %s from loyalty program."], entry.name))
                 LW:Refresh()
             end)
@@ -592,8 +628,9 @@ function LW:AddPlayer()
     local points = tonumber(pointsInput) or 0
     points = math.floor(math.max(0, points))
 
-    -- Set points
+    -- Set points and total points
     TSM.db.profile.loyalty.playerPoints[nameInput] = points
+    TSM.db.profile.loyalty.playerTotalPoints[nameInput] = points
     TSM:Print(format(L["Added %s with %d loyalty points."], nameInput, points))
 
     -- Close modal and refresh

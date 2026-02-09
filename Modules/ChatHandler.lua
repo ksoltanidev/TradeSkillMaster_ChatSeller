@@ -16,23 +16,25 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
     local lowerPrefix = strlower(prefix)
 
     -- Build patterns based on whether prefix is empty or not
-    local pricePattern, gearPattern, tmogPattern, buyPattern, loyaltyPattern, refPattern
+    local pricePattern, gearPattern, tmogPattern, buyPattern, loyaltyPattern, refPattern, rankPattern
     if lowerPrefix == "" then
-        -- No prefix: commands start directly with "price", "gear", "tmog", "buy", "loyalty", or "ref"
+        -- No prefix: commands start directly with "price", "gear", "tmog", "buy", "loyalty", "ref", or "rank"
         pricePattern = "^price%s+"
         gearPattern = "^gear%s*(.*)$"
         tmogPattern = "^tmog%s*(.*)$"
         buyPattern = "^buy%s+"
         loyaltyPattern = "^loyalty%s*$"
         refPattern = "^ref%s+(.+)$"
+        rankPattern = "^rank%s*$"
     else
-        -- With prefix: "prefix price", "prefix gear", "prefix tmog", "prefix buy", "prefix loyalty", or "prefix ref"
+        -- With prefix: "prefix price", "prefix gear", "prefix tmog", "prefix buy", "prefix loyalty", "prefix ref", or "prefix rank"
         pricePattern = "^" .. lowerPrefix .. "%s+price%s+"
         gearPattern = "^" .. lowerPrefix .. "%s+gear%s*(.*)$"
         tmogPattern = "^" .. lowerPrefix .. "%s+tmog%s*(.*)$"
         buyPattern = "^" .. lowerPrefix .. "%s+buy%s+"
         loyaltyPattern = "^" .. lowerPrefix .. "%s+loyalty%s*$"
         refPattern = "^" .. lowerPrefix .. "%s+ref%s+(.+)$"
+        rankPattern = "^" .. lowerPrefix .. "%s+rank%s*$"
     end
 
     -- Check for loyalty command (loyalty program)
@@ -48,6 +50,14 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
         local refArgs = strmatch(lowerMessage, refPattern)
         if refArgs then
             TSM:HandleRefCommand(sender, strtrim(refArgs))
+            return
+        end
+    end
+
+    -- Check for rank command (leaderboard)
+    if TSM.db.profile.loyalty.enabled then
+        if strmatch(lowerMessage, rankPattern) then
+            TSM:HandleRankCommand(sender)
             return
         end
     end

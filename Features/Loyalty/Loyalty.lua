@@ -35,6 +35,7 @@ function TSM:AwardLoyaltyPoints(buyer, copperAmount)
     end
 
     loyalty.playerPoints[buyer] = (loyalty.playerPoints[buyer] or 0) + pointsAwarded
+    loyalty.playerTotalPoints[buyer] = (loyalty.playerTotalPoints[buyer] or 0) + pointsAwarded
     return pointsAwarded, loyalty.playerPoints[buyer]
 end
 
@@ -91,6 +92,7 @@ function TSM:CompleteOffer(offerIndex)
             local referrerBonus = math.floor(pointsAwarded * bonusPct / 100)
             if referrerBonus > 0 then
                 loyalty.playerPoints[referrer] = (loyalty.playerPoints[referrer] or 0) + referrerBonus
+                loyalty.playerTotalPoints[referrer] = (loyalty.playerTotalPoints[referrer] or 0) + referrerBonus
 
                 -- Whisper the referrer about their bonus points
                 local prefix = TSM.db.profile.commandPrefix or ""
@@ -193,6 +195,40 @@ function TSM:HandleLoyaltyCommand(sender)
             cmdPrefix, bonusPct),
         "WHISPER", nil, sender
     )
+
+    -- Message 5: Rank promo
+    local leaderboard = {}
+    for name, total in pairs(loyalty.playerTotalPoints) do
+        if total > 0 then
+            tinsert(leaderboard, { name = name, total = total })
+        end
+    end
+    table.sort(leaderboard, function(a, b)
+        if a.total == b.total then
+            return strlower(a.name) < strlower(b.name)
+        end
+        return a.total > b.total
+    end)
+    local senderRank = nil
+    for i, entry in ipairs(leaderboard) do
+        if entry.name == sender then
+            senderRank = i
+            break
+        end
+    end
+
+    if senderRank then
+        SendChatMessage(
+            format(L["You are ranked %s! Send \"%srank\" to see the Top 3 buyers."],
+                TSM:FormatOrdinal(senderRank), cmdPrefix),
+            "WHISPER", nil, sender
+        )
+    else
+        SendChatMessage(
+            format(L["Send \"%srank\" to see the Top 3 buyers."], cmdPrefix),
+            "WHISPER", nil, sender
+        )
+    end
 end
 
 -- ===================================================================================== --
@@ -249,4 +285,79 @@ function TSM:HandleRefCommand(sender, refName)
 
     -- Print to seller's chat
     TSM:Print(format(L["%s set %s as their referrer."], normalizedSender, normalizedRef))
+end
+
+-- ===================================================================================== --
+-- Leaderboard / Rank Command
+-- ===================================================================================== --
+
+-- Format a number as ordinal: 1st, 2nd, 3rd, 4th, etc.
+function TSM:FormatOrdinal(n)
+    local suffix = "th"
+    local lastTwo = n % 100
+    if lastTwo == 11 or lastTwo == 12 or lastTwo == 13 then
+        suffix = "th"
+    else
+        local lastOne = n % 10
+        if lastOne == 1 then suffix = "st"
+        elseif lastOne == 2 then suffix = "nd"
+        elseif lastOne == 3 then suffix = "rd"
+        end
+    end
+    return tostring(n) .. suffix
+end
+
+-- Handle the "rank" whisper command: show Top 3 + sender's rank
+-- @param sender: player name who whispered
+function TSM:HandleRankCommand(sender)
+    local loyalty = TSM.db.profile.loyalty
+    sender = NormalizeName(sender)
+    local senderTotal = loyalty.playerTotalPoints[sender] or 0
+
+    -- Build leaderboard from playerTotalPoints, sorted descending
+    local leaderboard = {}
+    for name, total in pairs(loyalty.playerTotalPoints) do
+        if total > 0 then
+            tinsert(leaderboard, { name = name, total = total })
+        end
+    end
+    table.sort(leaderboard, function(a, b)
+        if a.total == b.total then
+            return strlower(a.name) < strlower(b.name)
+        end
+        return a.total > b.total
+    end)
+
+    -- Find sender's rank
+    local senderRank = nil
+    for i, entry in ipairs(leaderboard) do
+        if entry.name == sender then
+            senderRank = i
+            break
+        end
+    end
+
+    -- Message 1: Sender's total and rank
+    if senderRank then
+        SendChatMessage(
+            format(L["You have earned a total of %d points, you are %s."],
+                senderTotal, TSM:FormatOrdinal(senderRank)),
+            "WHISPER", nil, sender
+        )
+    else
+        SendChatMessage(
+            format(L["You have earned a total of %d points."], senderTotal),
+            "WHISPER", nil, sender
+        )
+    end
+
+    -- Messages 2-4: Top 3
+    for rank = 1, math.min(3, #leaderboard) do
+        local entry = leaderboard[rank]
+        SendChatMessage(
+            format(L["Top %d - %s with %d points."],
+                rank, entry.name, entry.total),
+            "WHISPER", nil, sender
+        )
+    end
 end
