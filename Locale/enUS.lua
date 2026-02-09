@@ -135,3 +135,6 @@ L["Cancel"] = true
 L["Please enter an item link and a buyer name."] = true
 L["Manually added offer for %s from %s."] = true
 L["Confirm"] = true
+
+-- Mail CoD Auto-Confirm
+L["Auto-confirmed sale: %s to %s for %sg."] = true

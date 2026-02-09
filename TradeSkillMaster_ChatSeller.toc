@@ -33,3 +33,4 @@ Features\Transmogs\OffersWindow.lua
 
 # Integrations
 Integrations\BagnonGuildBank.lua
+Integrations\MailCoDConfirm.lua
