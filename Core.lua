@@ -254,15 +254,16 @@ function TSM:SyncFromGuildBank(tab)
         if itemLink then
             local name, _, _, _, _, _, itemSubClass, _, equipLoc = GetItemInfo(itemLink)
             if name and not existingNames[name] then
-                local tmogType, tmogSubType, price
+                local tmogType, tmogSubType, tmogHand, price
                 local historyEntry = history and history[name]
 
                 if historyEntry then
                     tmogType = historyEntry.tmogType
                     tmogSubType = historyEntry.tmogSubType
+                    tmogHand = historyEntry.tmogHand
                     price = historyEntry.price
                 else
-                    tmogType, tmogSubType = TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
+                    tmogType, tmogSubType, tmogHand = TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
                 end
 
                 -- Default to "misc" if type could not be detected
@@ -274,6 +275,7 @@ function TSM:SyncFromGuildBank(tab)
                     name = name,
                     tmogType = tmogType,
                     tmogSubType = tmogSubType,
+                    tmogHand = tmogHand,
                     source = "GuildBank",
                 })
                 existingNames[name] = true

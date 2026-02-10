@@ -66,6 +66,7 @@ function TSM:ParseTransmogArguments(args)
     local filters = {
         tmogType = nil,
         tmogSubType = nil,
+        tmogHand = nil,
         nameFilter = nil,
     }
 
@@ -152,6 +153,23 @@ function TSM:ParseTransmogArguments(args)
             end
         end
 
+        -- Check for hand filter (1h/2h)
+        if not consumed then
+            if word == "1h" or word == "1main" or word == "1mano" then
+                filters.tmogHand = "1h"
+                if not filters.tmogType then
+                    filters.tmogType = "weapon"
+                end
+                consumed = true
+            elseif word == "2h" or word == "2main" or word == "2mano" then
+                filters.tmogHand = "2h"
+                if not filters.tmogType then
+                    filters.tmogType = "weapon"
+                end
+                consumed = true
+            end
+        end
+
         -- Unrecognized word -> name filter
         if not consumed then
             tinsert(unrecognized, word)
@@ -202,7 +220,7 @@ function TSM:HandleTransmogCommand(sender, args)
     local filters = TSM:ParseTransmogArguments(args)
 
     -- Check if any filter was recognized
-    local hasAnyFilter = filters.tmogType or filters.tmogSubType or filters.nameFilter or filters.isFree
+    local hasAnyFilter = filters.tmogType or filters.tmogSubType or filters.tmogHand or filters.nameFilter or filters.isFree
 
     if not hasAnyFilter then
         TSM:SendTransmogHelpMessage(sender)
@@ -268,6 +286,13 @@ function TSM:TransmogItemMatchesFilter(item, filters)
     -- Check subtype match
     if filters.tmogSubType then
         if not item.tmogSubType or strlower(item.tmogSubType) ~= strlower(filters.tmogSubType) then
+            return false
+        end
+    end
+
+    -- Check hand match (1h/2h)
+    if filters.tmogHand then
+        if not item.tmogHand or item.tmogHand ~= filters.tmogHand then
             return false
         end
     end
@@ -342,7 +367,7 @@ function TSM:SendTransmogHelpMessage(sender)
     SendChatMessage("Welcome to the Transmog Shop! Browse cosmetic items using chat messages.", "WHISPER", nil, sender)
     SendChatMessage("Usage Examples: '" .. cmdPrefix .. "tmog mount', '" .. cmdPrefix .. "tmog weapon sword', '" .. cmdPrefix .. "tmog windfury'", "WHISPER", nil, sender)
     SendChatMessage("Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars, free", "WHISPER", nil, sender)
-    SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown", "WHISPER", nil, sender)
+    SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown | Filters: 1h, 2h", "WHISPER", nil, sender)
     SendChatMessage("Armor subtypes: head, shoulders, chest, wrist, gloves, waist, legs, feet, back", "WHISPER", nil, sender)
     SendChatMessage("Name filter: use quotes for multi-word search, e.g. " .. cmdPrefix .. "tmog \"fire sword\"", "WHISPER", nil, sender)
     SendChatMessage("Example: '" .. cmdPrefix .. "tmog weapon sword' or '" .. cmdPrefix .. "tmog fire'", "WHISPER", nil, sender)

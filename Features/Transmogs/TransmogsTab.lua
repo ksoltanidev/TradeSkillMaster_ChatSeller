@@ -8,6 +8,20 @@ local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ChatSeller")
 -- Get Options module reference
 local Options = TSM:GetModule("Options")
 
+-- Pagination
+local ITEMS_PER_PAGE = 25
+
+local function GetPagedItems(filteredItems)
+    local currentPage = Options.tmogCurrentPage or 1
+    local startIdx = (currentPage - 1) * ITEMS_PER_PAGE + 1
+    local endIdx = math.min(startIdx + ITEMS_PER_PAGE - 1, #filteredItems)
+    local paged = {}
+    for i = startIdx, endIdx do
+        tinsert(paged, filteredItems[i])
+    end
+    return paged
+end
+
 -- ===================================================================================== --
 -- Transmog Type/SubType Definitions (for dropdowns)
 -- ===================================================================================== --
@@ -91,6 +105,25 @@ local ITEM_SUBCLASS_TO_TMOG_SUBTYPE = {
     ["Thrown"] = "thrown",
 }
 
+-- Maps WoW itemSubClass string → hand type (1h or 2h)
+local ITEM_SUBCLASS_TO_HAND = {
+    ["One-Handed Swords"] = "1h",
+    ["Two-Handed Swords"] = "2h",
+    ["One-Handed Axes"] = "1h",
+    ["Two-Handed Axes"] = "2h",
+    ["One-Handed Maces"] = "1h",
+    ["Two-Handed Maces"] = "2h",
+    ["Daggers"] = "1h",
+    ["Staves"] = "2h",
+    ["Polearms"] = "2h",
+    ["Fist Weapons"] = "1h",
+    ["Bows"] = "2h",
+    ["Guns"] = "2h",
+    ["Crossbows"] = "2h",
+    ["Wands"] = "1h",
+    ["Thrown"] = "1h",
+}
+
 -- Maps WoW equipLoc → our transmog subtype key
 local EQUIP_LOC_TO_TMOG_SUBTYPE = {
     ["INVTYPE_HEAD"] = "head",
@@ -105,33 +138,34 @@ local EQUIP_LOC_TO_TMOG_SUBTYPE = {
     ["INVTYPE_CLOAK"] = "back",
 }
 
--- Detect tmogType and tmogSubType from GetItemInfo data
--- Returns tmogType, tmogSubType (or nil, nil if unrecognized)
+-- Detect tmogType, tmogSubType, and tmogHand from GetItemInfo data
+-- Returns tmogType, tmogSubType, tmogHand (or nil, nil, nil if unrecognized)
 function TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
     -- Check weapon subclass first
     local weaponSubType = ITEM_SUBCLASS_TO_TMOG_SUBTYPE[itemSubClass]
     if weaponSubType then
-        return "weapon", weaponSubType
+        local hand = ITEM_SUBCLASS_TO_HAND[itemSubClass]
+        return "weapon", weaponSubType, hand
     end
 
     -- Check shield (special type, not "armor set")
     if equipLoc == "INVTYPE_SHIELD" then
-        return "shield", "none"
+        return "shield", "none", nil
     end
 
     -- Check tabard
     if equipLoc == "INVTYPE_BODY" then
-        return "tabard", "none"
+        return "tabard", "none", nil
     end
 
     -- Check armor slots
     local armorSubType = EQUIP_LOC_TO_TMOG_SUBTYPE[equipLoc]
     if armorSubType then
-        return "armor set", armorSubType
+        return "armor set", armorSubType, nil
     end
 
     -- Unrecognized - return nil to keep current dropdown values
-    return nil, nil
+    return nil, nil, nil
 end
 
 -- Build dropdown list tables for TSMAPI:BuildPage
@@ -204,6 +238,32 @@ local function GetFilterDropdownOrder()
     return order
 end
 
+-- SubType filter: "all" + all subtypes (reuses TMOG_SUBTYPE_LIST but excludes "none")
+local FILTER_SUBTYPE_LIST = { "all" }
+for _, subKey in ipairs(TMOG_SUBTYPE_LIST) do
+    if subKey ~= "none" then
+        tinsert(FILTER_SUBTYPE_LIST, subKey)
+    end
+end
+
+local function GetFilterSubTypeDropdownList()
+    local list = { ["all"] = L["All"] }
+    for _, subKey in ipairs(TMOG_SUBTYPE_LIST) do
+        if subKey ~= "none" then
+            list[subKey] = TMOG_SUBTYPE_DISPLAY[subKey] or subKey
+        end
+    end
+    return list
+end
+
+local function GetFilterSubTypeDropdownOrder()
+    local order = {}
+    for _, subKey in ipairs(FILTER_SUBTYPE_LIST) do
+        tinsert(order, subKey)
+    end
+    return order
+end
+
 -- ===================================================================================== --
 -- Transmogs Tab
 -- ===================================================================================== --
@@ -223,9 +283,22 @@ function Options:LoadTransmogsTab(container)
     if not Options.tmogFilterTab then
         Options.tmogFilterTab = "mount"
     end
+    if not Options.tmogFilterSubType then
+        Options.tmogFilterSubType = "all"
+    end
+    if not Options.tmogFilterHand then
+        Options.tmogFilterHand = "all"
+    end
+    if not Options.tmogCurrentPage then
+        Options.tmogCurrentPage = 1
+    end
 
-    -- Get filtered items for the title count
+    -- Get filtered items and validate current page
     local filteredItems = Options:GetFilteredTransmogItems()
+    local totalPages = math.max(1, math.ceil(#filteredItems / ITEMS_PER_PAGE))
+    if Options.tmogCurrentPage > totalPages then
+        Options.tmogCurrentPage = totalPages
+    end
 
     local page = {
         {
@@ -300,7 +373,7 @@ function Options:LoadTransmogsTab(container)
                                         local historyEntry = history and history[name]
 
                                         if historyEntry then
-                                            -- History found: use saved type/subtype/price
+                                            -- History found: use saved type/subtype/price/hand
                                             if historyEntry.tmogType then
                                                 Options.pendingTmogType = historyEntry.tmogType
                                             end
@@ -310,15 +383,17 @@ function Options:LoadTransmogsTab(container)
                                             if historyEntry.price then
                                                 Options.pendingTmogPrice = tostring(math.floor(historyEntry.price / 10000))
                                             end
+                                            Options.pendingTmogHand = historyEntry.tmogHand
                                         else
                                             -- No history: try to detect from item data
-                                            local detectedType, detectedSubType = TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
+                                            local detectedType, detectedSubType, detectedHand = TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
                                             if detectedType then
                                                 Options.pendingTmogType = detectedType
                                             end
                                             if detectedSubType then
                                                 Options.pendingTmogSubType = detectedSubType
                                             end
+                                            Options.pendingTmogHand = detectedHand
                                         end
 
                                         -- Refresh to show updated dropdowns and price
@@ -372,6 +447,7 @@ function Options:LoadTransmogsTab(container)
                             relativeWidth = 0.12,
                             callback = function()
                                 wipe(TSM.db.profile.transmogs.itemList)
+                                Options.tmogCurrentPage = 1
                                 Options:RefreshTransmogsTab()
                             end,
                         },
@@ -388,16 +464,45 @@ function Options:LoadTransmogsTab(container)
                 {
                     type = "HeadingLine",
                 },
-                -- Filter Dropdown
+                -- Filter Dropdowns
                 {
                     type = "Dropdown",
                     label = L["Filter"],
-                    relativeWidth = 0.30,
+                    relativeWidth = 0.25,
                     list = GetFilterDropdownList(),
                     order = GetFilterDropdownOrder(),
                     value = Options.tmogFilterTab,
                     callback = function(widget, _, value)
                         Options.tmogFilterTab = value
+                        Options.tmogFilterSubType = "all"
+                        Options.tmogFilterHand = "all"
+                        Options.tmogCurrentPage = 1
+                        Options:RefreshTransmogsTab()
+                    end,
+                },
+                {
+                    type = "Dropdown",
+                    label = L["SubType"],
+                    relativeWidth = 0.20,
+                    list = GetFilterSubTypeDropdownList(),
+                    order = GetFilterSubTypeDropdownOrder(),
+                    value = Options.tmogFilterSubType,
+                    callback = function(widget, _, value)
+                        Options.tmogFilterSubType = value
+                        Options.tmogCurrentPage = 1
+                        Options:RefreshTransmogsTab()
+                    end,
+                },
+                {
+                    type = "Dropdown",
+                    label = L["Hand"],
+                    relativeWidth = 0.15,
+                    list = { ["all"] = L["All"], ["1h"] = "1H", ["2h"] = "2H" },
+                    order = { "all", "1h", "2h" },
+                    value = Options.tmogFilterHand,
+                    callback = function(widget, _, value)
+                        Options.tmogFilterHand = value
+                        Options.tmogCurrentPage = 1
                         Options:RefreshTransmogsTab()
                     end,
                 },
@@ -407,7 +512,7 @@ function Options:LoadTransmogsTab(container)
                     title = L["Transmog List"] .. " (" .. #filteredItems .. " " .. L["items"] .. ")",
                     layout = "Flow",
                     fullWidth = true,
-                    children = Options:GetTransmogListWidgets(filteredItems),
+                    children = Options:GetTransmogListWidgets(filteredItems, totalPages),
                 },
             },
         },
@@ -424,6 +529,8 @@ end
 -- Returns array of { index = originalIndex, item = itemRef }
 function Options:GetFilteredTransmogItems()
     local filterValue = Options.tmogFilterTab or "all"
+    local filterSubType = Options.tmogFilterSubType or "all"
+    local filterHand = Options.tmogFilterHand or "all"
     local allItems = TSM.db.profile.transmogs.itemList
     local filtered = {}
     for i, item in ipairs(allItems) do
@@ -437,6 +544,14 @@ function Options:GetFilteredTransmogItems()
         else
             show = (item.tmogType == filterValue)
         end
+        -- Apply subtype filter
+        if show and filterSubType ~= "all" then
+            show = (item.tmogSubType == filterSubType)
+        end
+        -- Apply hand filter
+        if show and filterHand ~= "all" then
+            show = (item.tmogHand == filterHand)
+        end
         if show then
             tinsert(filtered, { index = i, item = item })
         end
@@ -444,11 +559,13 @@ function Options:GetFilteredTransmogItems()
     return filtered
 end
 
--- Get widgets for the transmog item list
-function Options:GetTransmogListWidgets(filteredItems)
+-- Get widgets for the transmog item list (paginated)
+function Options:GetTransmogListWidgets(filteredItems, totalPages)
     local children = {}
+    local currentPage = Options.tmogCurrentPage or 1
+    local totalItems = #filteredItems
 
-    if #filteredItems == 0 then
+    if totalItems == 0 then
         tinsert(children, {
             type = "Label",
             text = L["No transmog items. Add items above."],
@@ -464,8 +581,11 @@ function Options:GetTransmogListWidgets(filteredItems)
     tinsert(children, { type = "Label", text = "|cffffd100" .. L["SubType"] .. "|r", relativeWidth = 0.18 })
     tinsert(children, { type = "Label", text = "", relativeWidth = 0.12 })
 
-    -- Item rows
-    for _, entry in ipairs(filteredItems) do
+    -- Get only the items for the current page
+    local pagedItems = GetPagedItems(filteredItems)
+
+    -- Item rows (only current page)
+    for _, entry in ipairs(pagedItems) do
         local originalIndex = entry.index
         local item = entry.item
         local priceGold = (item.price and item.price > 0) and tostring(math.floor(item.price / 10000)) or ""
@@ -543,6 +663,36 @@ function Options:GetTransmogListWidgets(filteredItems)
         })
     end
 
+    -- Pagination controls (only show if more than one page)
+    if totalPages > 1 then
+        tinsert(children, { type = "HeadingLine" })
+        tinsert(children, {
+            type = "Button",
+            text = "< " .. L["Prev"],
+            relativeWidth = 0.15,
+            disabled = (currentPage <= 1),
+            callback = function()
+                Options.tmogCurrentPage = math.max(1, currentPage - 1)
+                Options:RefreshTransmogsTab()
+            end,
+        })
+        tinsert(children, {
+            type = "Label",
+            text = format("Page %d / %d  (%d %s)", currentPage, totalPages, totalItems, L["items"]),
+            relativeWidth = 0.56,
+        })
+        tinsert(children, {
+            type = "Button",
+            text = L["Next"] .. " >",
+            relativeWidth = 0.15,
+            disabled = (currentPage >= totalPages),
+            callback = function()
+                Options.tmogCurrentPage = math.min(totalPages, currentPage + 1)
+                Options:RefreshTransmogsTab()
+            end,
+        })
+    end
+
     return children
 end
 
@@ -601,8 +751,8 @@ function Options:AddTransmogItemFromInput()
         return
     end
 
-    -- Get item info (just need the name and link for validation)
-    local name, itemLink = GetItemInfo(link)
+    -- Get item info (name, link, and subclass/equiploc for hand detection)
+    local name, itemLink, _, _, _, _, itemSubClass, _, equipLoc = GetItemInfo(link)
 
     if not name then
         TSM:Print(L["Invalid item link or item not cached."])
@@ -623,6 +773,13 @@ function Options:AddTransmogItemFromInput()
         tmogSubType = nil
     end
 
+    -- Detect hand type from item data
+    local tmogHand = Options.pendingTmogHand
+    if not tmogHand and itemSubClass then
+        local _, _, detectedHand = TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
+        tmogHand = detectedHand
+    end
+
     -- Check for duplicates - update existing item instead of rejecting
     local existingIndex = nil
     for i, existing in ipairs(TSM.db.profile.transmogs.itemList) do
@@ -639,6 +796,7 @@ function Options:AddTransmogItemFromInput()
         existing.link = itemLink  -- refresh link in case it changed
         existing.tmogType = tmogType
         existing.tmogSubType = tmogSubType
+        existing.tmogHand = tmogHand
         TSM:Print(format(L["Updated %s in transmog list."], itemLink))
     else
         -- Add new item
@@ -648,6 +806,7 @@ function Options:AddTransmogItemFromInput()
             name = name,
             tmogType = tmogType,
             tmogSubType = tmogSubType,
+            tmogHand = tmogHand,
             source = "Manual",
         })
         TSM:Print(format(L["Added %s to transmog list."], itemLink))
@@ -658,11 +817,13 @@ function Options:AddTransmogItemFromInput()
         price = price,
         tmogType = tmogType,
         tmogSubType = tmogSubType,
+        tmogHand = tmogHand,
     }
 
     -- Clear input fields (keep dropdown selections for convenience)
     Options.pendingTmogLink = nil
     Options.pendingTmogPrice = nil
+    Options.pendingTmogHand = nil
 
     -- Refresh the tab
     Options:RefreshTransmogsTab()
