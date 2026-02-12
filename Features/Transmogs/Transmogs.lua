@@ -6,6 +6,9 @@
 local TSM = select(2, ...)
 local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ChatSeller")
 
+-- Pagination
+local ITEMS_PER_PAGE = 50
+
 -- ===================================================================================== --
 -- Transmog Type/Subtype Data
 -- ===================================================================================== --
@@ -120,6 +123,14 @@ function TSM:ParseTransmogArguments(args)
             end
         end
 
+        -- Check for "new" filter keyword
+        if not consumed then
+            if word == "new" or word == "nouveau" or word == "nuevo" then
+                filters.isNew = true
+                consumed = true
+            end
+        end
+
         -- Check for type aliases
         if not consumed then
             local tmogType = TYPE_ALIASES[word]
@@ -225,7 +236,7 @@ function TSM:HandleTransmogCommand(sender, args)
     local filters = TSM:ParseTransmogArguments(args)
 
     -- Check if any filter was recognized
-    local hasAnyFilter = filters.tmogType or filters.tmogSubType or filters.tmogHand or filters.nameFilter or filters.isFree
+    local hasAnyFilter = filters.tmogType or filters.tmogSubType or filters.tmogHand or filters.nameFilter or filters.isFree or filters.isNew
 
     if not hasAnyFilter then
         TSM:SendTransmogHelpMessage(sender)
@@ -236,6 +247,7 @@ function TSM:HandleTransmogCommand(sender, args)
     local pd = TSM:GetPlayerData(TSM:NormalizeName(sender))
     pd.lastTmogSearch = args
     pd.lastTmogSearchTime = time()
+    pd.lastTmogPage = 1
 
     -- Get matching items
     local matchingItems = TSM:FilterTransmogItems(filters)
@@ -245,8 +257,33 @@ function TSM:HandleTransmogCommand(sender, args)
         return
     end
 
-    -- Send responses (up to 50 items, 3 per message)
-    TSM:SendTransmogResponses(sender, matchingItems)
+    -- Send responses (first page)
+    TSM:SendTransmogResponses(sender, matchingItems, 1)
+end
+
+-- Handle "+" / "more" pagination command
+function TSM:HandleTransmogMoreCommand(sender)
+    local pd = TSM:GetPlayerData(TSM:NormalizeName(sender))
+    if not pd or not pd.lastTmogSearch or pd.lastTmogSearch == "" then
+        return  -- no previous search, ignore silently
+    end
+
+    -- Re-run the last search
+    local filters = TSM:ParseTransmogArguments(pd.lastTmogSearch)
+    local matchingItems = TSM:FilterTransmogItems(filters)
+
+    -- Advance to next page
+    local nextPage = (pd.lastTmogPage or 1) + 1
+    pd.lastTmogPage = nextPage
+
+    -- Check if there are items for this page
+    local startIdx = (nextPage - 1) * ITEMS_PER_PAGE + 1
+    if startIdx > #matchingItems then
+        SendChatMessage(L["No more results."], "WHISPER", nil, sender)
+        return
+    end
+
+    TSM:SendTransmogResponses(sender, matchingItems, nextPage)
 end
 
 -- ===================================================================================== --
@@ -264,6 +301,11 @@ function TSM:FilterTransmogItems(filters)
         end
     end
 
+    -- Sort by price ascending (free items first)
+    table.sort(results, function(a, b)
+        return (a.price or 0) < (b.price or 0)
+    end)
+
     return results
 end
 
@@ -279,9 +321,21 @@ function TSM:TransmogItemMatchesFilter(item, filters)
         return false
     end
 
+    -- Hide unpublished items from chat (nil = published for backward compat)
+    if item.published == false then
+        return false
+    end
+
     -- Check free filter - only show items with no price or price == 0
     if filters.isFree then
         if item.price and item.price > 0 then
+            return false
+        end
+    end
+
+    -- Check new filter - only show items available within the last 3 days
+    if filters.isNew then
+        if not item.availableSince or (time() - item.availableSince) >= 3 * 24 * 3600 then
             return false
         end
     end
@@ -340,16 +394,18 @@ function TSM:FormatTransmogItem(item)
     return itemText .. priceStr
 end
 
--- Send transmog item responses (3 items per message, max 50 items)
-function TSM:SendTransmogResponses(sender, items)
-    local maxItems = min(#items, 50)
+-- Send transmog item responses (3 items per message, paginated)
+function TSM:SendTransmogResponses(sender, items, page)
+    page = page or 1
+    local startIdx = (page - 1) * ITEMS_PER_PAGE + 1
+    local endIdx = min(startIdx + ITEMS_PER_PAGE - 1, #items)
 
     -- Send 3 items per message
-    for i = 1, maxItems, 3 do
+    for i = startIdx, endIdx, 3 do
         local parts = {}
         for j = 0, 2 do
             local idx = i + j
-            if idx <= maxItems then
+            if idx <= endIdx then
                 tinsert(parts, TSM:FormatTransmogItem(items[idx]))
             end
         end
@@ -357,17 +413,25 @@ function TSM:SendTransmogResponses(sender, items)
         SendChatMessage(response, "WHISPER", nil, sender)
     end
 
-    -- Promo messages
-    local prefix = TSM.db.profile.commandPrefix or ""
-    local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+    -- "More results" message if there are remaining items
+    local remaining = #items - endIdx
+    if remaining > 0 then
+        SendChatMessage(
+            format(L["There are %d more results. Send \"+\" or \"more\" to see the next page."], remaining),
+            "WHISPER", nil, sender
+        )
+    end
 
-    -- Message 1: How to buy
-    SendChatMessage(
-        format(L["Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."],
-            cmdPrefix, cmdPrefix),
-        "WHISPER", nil, sender
-    )
-
+    -- Buy promo (only on first page to avoid spam)
+    if page == 1 then
+        local prefix = TSM.db.profile.commandPrefix or ""
+        local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
+        SendChatMessage(
+            format(L["Make an offer by sending \"%sbuy [ItemLink]\". You can add the price to make an offer under the set price \"%sbuy [ItemLink] 100g\"."],
+                cmdPrefix, cmdPrefix),
+            "WHISPER", nil, sender
+        )
+    end
 end
 
 -- Send help message for tmog command. Never use "|" char because its throws an error.
@@ -376,7 +440,7 @@ function TSM:SendTransmogHelpMessage(sender)
     local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
     SendChatMessage("Welcome to the Transmog Shop! Browse cosmetic items using chat messages.", "WHISPER", nil, sender)
     SendChatMessage("Usage Examples: '" .. cmdPrefix .. "tmog mount', '" .. cmdPrefix .. "tmog weapon sword', '" .. cmdPrefix .. "tmog windfury'", "WHISPER", nil, sender)
-    SendChatMessage("Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars, free", "WHISPER", nil, sender)
+    SendChatMessage("Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars, free, new", "WHISPER", nil, sender)
     SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown, 1h, 2h", "WHISPER", nil, sender)
     SendChatMessage("Armor subtypes: head, shoulders, chest, wrist, gloves, waist, legs, feet, back", "WHISPER", nil, sender)
     SendChatMessage("Name filter: use quotes for multi-word search, e.g. " .. cmdPrefix .. "tmog \"fire sword\"", "WHISPER", nil, sender)

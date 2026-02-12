@@ -170,6 +170,7 @@ local PLAYER_DATA_DEFAULTS = {
     referrer = "",
     lastTmogSearch = "",
     lastTmogSearchTime = 0,
+    lastTmogPage = 0,
 }
 
 -- Get or create a player data entry, auto-creating with defaults if needed
@@ -348,6 +349,8 @@ function TSM:SyncFromGuildBank(tab)
                     tmogSubType = tmogSubType,
                     tmogHand = tmogHand,
                     source = "GuildBank",
+                    published = false,
+                    availableSince = time(),
                 })
                 existingNames[name] = true
                 added = added + 1

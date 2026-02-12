@@ -104,6 +104,19 @@ L["Out of Stock"] = true
 L["Prev"] = true
 L["Next"] = true
 
+-- New Transmogs Tab
+L["New Transmogs"] = true
+L["Publish"] = true
+L["Publish All"] = true
+L["Published %d items."] = true
+L["No unpublished transmog items."] = true
+L["New Transmogs List"] = true
+L["New"] = true
+
+-- Pagination
+L["There are %d more results. Send \"+\" or \"more\" to see the next page."] = true
+L["No more results."] = true
+
 -- GuildBank Integration
 L["Sync Tmog"] = true
 L["No guild bank tab selected."] = true

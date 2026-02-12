@@ -32,6 +32,7 @@ Features\Loyalty\LoyaltyWindow.lua
 # Features - Transmogs
 Features\Transmogs\Transmogs.lua
 Features\Transmogs\TransmogsTab.lua
+Features\Transmogs\NewTransmogsTab.lua
 Features\Transmogs\BuyCommand.lua
 Features\Transmogs\OffersWindow.lua
 Features\Transmogs\OfferActions.lua

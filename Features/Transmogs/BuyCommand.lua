@@ -16,7 +16,7 @@ function TSM:FindTransmogItemByLink(itemLink)
     if not searchName then return nil end
 
     for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
-        if item.name == searchName then
+        if item.name == searchName and item.published ~= false then
             return item
         end
     end

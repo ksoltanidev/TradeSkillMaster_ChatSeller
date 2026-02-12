@@ -37,6 +37,14 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
         rankPattern = "^" .. lowerPrefix .. "%s+rank%s*$"
     end
 
+    -- Check for "more" / "+" pagination command (no prefix needed)
+    if TSM.db.profile.transmogs.enabled then
+        if lowerMessage == "+" or lowerMessage == "more" then
+            TSM:HandleTransmogMoreCommand(sender)
+            return
+        end
+    end
+
     -- Check for loyalty command (loyalty program)
     if TSM.db.profile.loyalty.enabled then
         if strmatch(lowerMessage, loyaltyPattern) then

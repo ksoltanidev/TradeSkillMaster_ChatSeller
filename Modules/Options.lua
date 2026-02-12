@@ -23,7 +23,8 @@ function Options:Load(container)
         { text = L["Prices"], value = 1 },
         { text = L["Gears"], value = 2 },
         { text = L["Transmogs"], value = 3 },
-        { text = L["Options"], value = 4 },
+        { text = L["New Transmogs"], value = 4 },
+        { text = L["Options"], value = 5 },
     })
 
     tabGroup:SetCallback("OnGroupSelected", function(self, _, value)
@@ -36,6 +37,8 @@ function Options:Load(container)
         elseif value == 3 then
             Options:LoadTransmogsTab(self)
         elseif value == 4 then
+            Options:LoadNewTransmogsTab(self)
+        elseif value == 5 then
             Options:LoadOptionsTab(self)
         end
     end)

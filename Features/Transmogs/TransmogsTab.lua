@@ -206,7 +206,7 @@ end
 -- ===================================================================================== --
 
 -- Filter options: "all" + each type + "free"
-local FILTER_LIST = { "all", "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars", "free", "out of stock" }
+local FILTER_LIST = { "all", "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars", "free", "out of stock", "new" }
 local FILTER_DISPLAY = {
     ["all"] = L["All"],
     ["weapon"] = "Weapon",
@@ -220,7 +220,11 @@ local FILTER_DISPLAY = {
     ["altars"] = "Altars",
     ["free"] = L["Free"],
     ["out of stock"] = L["Out of Stock"],
+    ["new"] = L["New"],
 }
+
+-- 3 days in seconds
+local NEW_ITEM_DURATION = 3 * 24 * 3600
 
 local function GetFilterDropdownList()
     local list = {}
@@ -549,6 +553,8 @@ function Options:GetFilteredTransmogItems()
             show = (not item.price or item.price == 0)
         elseif filterValue == "out of stock" then
             show = (item.inStock == false)
+        elseif filterValue == "new" then
+            show = (item.availableSince and (time() - item.availableSince) < NEW_ITEM_DURATION)
         else
             show = (item.tmogType == filterValue)
         end
@@ -618,6 +624,11 @@ function Options:GetTransmogListWidgets(filteredItems, totalPages)
             text = item.link or item.name or "Unknown",
             relativeWidth = 0.36,
             tooltip = item.link,
+            callback = function()
+                if IsControlKeyDown() and item.link then
+                    DressUpItemLink(item.link)
+                end
+            end,
         })
         tinsert(children, {
             type = "EditBox",
@@ -728,7 +739,12 @@ function Options:RefreshTransmogStock()
             local personalBanksTotal = ItemTracker:GetPersonalBanksTotal(itemString) or 0
             local realmBankTotal = ItemTracker:GetRealmBankTotal(itemString) or 0
             local total = (playerTotal or 0) + (altTotal or 0) + guildTotal + personalBanksTotal + realmBankTotal
+            local wasOutOfStock = (item.inStock == false)
             item.inStock = (total > 0)
+            -- If item just came back in stock, update availableSince
+            if wasOutOfStock and item.inStock then
+                item.availableSince = time()
+            end
         else
             item.inStock = false
         end
@@ -837,6 +853,7 @@ function Options:AddTransmogItemFromInput()
         existing.tmogType = tmogType
         existing.tmogSubType = tmogSubType
         existing.tmogHand = tmogHand
+        existing.published = true
         TSM:Print(format(L["Updated %s in transmog list."], itemLink))
     else
         -- Add new item
@@ -848,6 +865,8 @@ function Options:AddTransmogItemFromInput()
             tmogSubType = tmogSubType,
             tmogHand = tmogHand,
             source = "Manual",
+            published = true,
+            availableSince = time(),
         })
         TSM:Print(format(L["Added %s to transmog list."], itemLink))
     end
