@@ -93,6 +93,8 @@ L["All"] = true
 L["Free"] = true
 L["Filter"] = true
 L["Hand"] = true
+L["Detect Hand"] = true
+L["Hand detection: updated %d items."] = true
 
 -- Stock Tracking
 L["Refresh Stock"] = true
@@ -160,8 +162,8 @@ L["Points Per Gold"] = true
 L["Reward Threshold"] = true
 L["Reward Discount (gold)"] = true
 
--- Loyalty Window
-L["Loyalty Points Manager"] = true
+-- Clients Window
+L["Clients"] = true
 L["Toggle Loyalty Points window"] = true
 L["Player"] = true
 L["Points"] = true
@@ -172,7 +174,7 @@ L["Please enter a player name."] = true
 L["Player %s already exists with %d points."] = true
 L["Added %s with %d loyalty points."] = true
 L["Updated %s to %d loyalty points."] = true
-L["Removed %s from loyalty program."] = true
+L["Removed %s from clients."] = true
 L["Remove"] = true
 
 -- Loyalty Whisper Notifications

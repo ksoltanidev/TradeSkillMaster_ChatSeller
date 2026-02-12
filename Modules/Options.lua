@@ -78,6 +78,20 @@ function Options:LoadOptionsTab(container)
                 },
                 {
                     type = "InlineGroup",
+                    title = L["Transmog Settings"],
+                    layout = "Flow",
+                    fullWidth = true,
+                    children = {
+                        {
+                            type = "CheckBox",
+                            label = L["Auto add friend on tmog command"],
+                            settingInfo = { TSM.db.profile.transmogs, "autoAddFriend" },
+                            tooltip = L["Automatically add players to your friend list when they use the tmog command."],
+                        },
+                    },
+                },
+                {
+                    type = "InlineGroup",
                     title = L["Loyalty Program Settings"],
                     layout = "Flow",
                     fullWidth = true,

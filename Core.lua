@@ -20,6 +20,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ChatSeller")
 local savedDBDefaults = {
     profile = {
         commandPrefix = "gem",  -- Global command prefix for all features
+        players = {},           -- { ["PlayerName"] = { points, totalPoints, referrer, lastTmogSearch, lastTmogSearchTime } }
         prices = {
             enabled = true,     -- Enable/disable price lookup feature
         },
@@ -29,20 +30,18 @@ local savedDBDefaults = {
         },
         transmogs = {
             enabled = true,     -- Enable/disable transmog lookup feature
+            autoAddFriend = false, -- Auto add friend when someone uses tmog command
             itemList = {},      -- {link, price, name, tmogType, tmogSubType, source}
             itemHistory = {},   -- { ["Item Name"] = { price = copper, tmogType = "weapon", tmogSubType = "sword" } }
             offerList = {},     -- {itemName, itemLink, buyer, offeredPrice, setPrice, isUnderSetPrice, status, timestamp}
         },
         loyalty = {
             enabled = true,             -- Enable/disable loyalty points system
-            playerPoints = {},          -- { ["PlayerName"] = pointsInteger }
-            playerTotalPoints = {},     -- { ["PlayerName"] = lifetimeTotalPoints } (never decremented)
             pointsPerGold = 10,         -- Points awarded per gold spent
             rewardThreshold = 10000,    -- Points needed for reward
             rewardGoldDiscount = 100,   -- Gold discount when threshold reached
             completedOffers = {},       -- Archived completed offers
             maxCompletedOffers = 200,   -- Cap on completed offer history
-            playerReferrers = {},       -- { ["ReferredPlayer"] = "ReferrerPlayer" }
             referrerBonusPct = 20,      -- % of points awarded to the referrer
         },
     },
@@ -55,6 +54,9 @@ local savedDBDefaults = {
 function TSM:OnInitialize()
     -- Initialize saved variables database
     TSM.db = LibStub("AceDB-3.0"):New("AscensionTSM_ChatSellerDB", savedDBDefaults, true)
+
+    -- Migrate old per-player data from loyalty section into players section
+    TSM:MigratePlayerData()
 
     -- Make module references accessible on TSM object
     for moduleName, module in pairs(TSM.modules) do
@@ -153,6 +155,75 @@ function TSM:FormatMoneyForChat(money)
     else
         return format("%dc", copper)
     end
+end
+
+-- Normalize player name to WoW canonical format: first letter uppercase, rest lowercase
+function TSM:NormalizeName(name)
+    if not name or name == "" then return name end
+    return strupper(strsub(name, 1, 1)) .. strlower(strsub(name, 2))
+end
+
+-- Default template for a new player entry
+local PLAYER_DATA_DEFAULTS = {
+    points = 0,
+    totalPoints = 0,
+    referrer = "",
+    lastTmogSearch = "",
+    lastTmogSearchTime = 0,
+}
+
+-- Get or create a player data entry, auto-creating with defaults if needed
+-- @param name: player name (should already be normalized by caller)
+-- @return player data table
+function TSM:GetPlayerData(name)
+    if not name or name == "" then return nil end
+    local players = TSM.db.profile.players
+    if not players[name] then
+        players[name] = {}
+        for k, v in pairs(PLAYER_DATA_DEFAULTS) do
+            players[name][k] = v
+        end
+    end
+    return players[name]
+end
+
+-- Migrate old per-player data from loyalty flat maps into unified players table
+-- Runs once on addon load; clears old keys after migration to prevent re-run
+function TSM:MigratePlayerData()
+    local loyalty = TSM.db.profile.loyalty
+
+    local hasOldData = (loyalty.playerPoints and next(loyalty.playerPoints))
+        or (loyalty.playerTotalPoints and next(loyalty.playerTotalPoints))
+        or (loyalty.playerReferrers and next(loyalty.playerReferrers))
+
+    if not hasOldData then return end
+
+    if loyalty.playerPoints then
+        for name, points in pairs(loyalty.playerPoints) do
+            local pd = TSM:GetPlayerData(name)
+            pd.points = points
+        end
+    end
+
+    if loyalty.playerTotalPoints then
+        for name, totalPoints in pairs(loyalty.playerTotalPoints) do
+            local pd = TSM:GetPlayerData(name)
+            pd.totalPoints = totalPoints
+        end
+    end
+
+    if loyalty.playerReferrers then
+        for name, referrer in pairs(loyalty.playerReferrers) do
+            local pd = TSM:GetPlayerData(name)
+            pd.referrer = referrer
+        end
+    end
+
+    loyalty.playerPoints = nil
+    loyalty.playerTotalPoints = nil
+    loyalty.playerReferrers = nil
+
+    TSM:Print("ChatSeller: Player data migrated to new format.")
 end
 
 -- ===================================================================================== --

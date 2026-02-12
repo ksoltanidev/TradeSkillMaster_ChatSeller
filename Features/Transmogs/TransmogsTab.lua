@@ -444,7 +444,7 @@ function Options:LoadTransmogsTab(container)
                         {
                             type = "Button",
                             text = L["Clear All"],
-                            relativeWidth = 0.12,
+                            relativeWidth = 0.10,
                             callback = function()
                                 wipe(TSM.db.profile.transmogs.itemList)
                                 Options.tmogCurrentPage = 1
@@ -454,9 +454,17 @@ function Options:LoadTransmogsTab(container)
                         {
                             type = "Button",
                             text = L["Refresh Stock"],
-                            relativeWidth = 0.14,
+                            relativeWidth = 0.12,
                             callback = function()
                                 Options:RefreshTransmogStock()
+                            end,
+                        },
+                        {
+                            type = "Button",
+                            text = L["Detect Hand"],
+                            relativeWidth = 0.12,
+                            callback = function()
+                                Options:BackfillTmogHand()
                             end,
                         },
                     },
@@ -575,7 +583,8 @@ function Options:GetTransmogListWidgets(filteredItems, totalPages)
     end
 
     -- Header row
-    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Item"] .. "|r", relativeWidth = 0.28 })
+    tinsert(children, { type = "Label", text = "|cffffd100S|r", relativeWidth = 0.05 })
+    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Item"] .. "|r", relativeWidth = 0.35 })
     tinsert(children, { type = "Label", text = "|cffffd100" .. L["Price"] .. "|r", relativeWidth = 0.10 })
     tinsert(children, { type = "Label", text = "|cffffd100" .. L["Type"] .. "|r", relativeWidth = 0.18 })
     tinsert(children, { type = "Label", text = "|cffffd100" .. L["SubType"] .. "|r", relativeWidth = 0.18 })
@@ -592,18 +601,22 @@ function Options:GetTransmogListWidgets(filteredItems, totalPages)
         local currentType = item.tmogType or "misc"
         local currentSubType = item.tmogSubType or "none"
 
-        -- Stock indicator prefix
-        local stockPrefix = ""
-        if item.inStock == true then
-            stockPrefix = "|cff00ff00[S]|r "
-        elseif item.inStock == false then
-            stockPrefix = "|cffff0000[X]|r "
-        end
-
+        -- Stock checkbox
+        local itemRef = item
+        tinsert(children, {
+            type = "CheckBox",
+            label = "",
+            relativeWidth = 0.05,
+            value = (item.inStock == true),
+            callback = function(widget, _, value)
+                itemRef.inStock = value
+                Options:RefreshTransmogsTab()
+            end,
+        })
         tinsert(children, {
             type = "InteractiveLabel",
-            text = stockPrefix .. (item.link or item.name or "Unknown"),
-            relativeWidth = 0.28,
+            text = item.link or item.name or "Unknown",
+            relativeWidth = 0.36,
             tooltip = item.link,
         })
         tinsert(children, {
@@ -728,6 +741,33 @@ function Options:RefreshTransmogStock()
     end
 
     TSM:Print(format(L["Stock refreshed: %d in stock, %d out of stock."], inStockCount, outOfStockCount))
+    Options:RefreshTransmogsTab()
+end
+
+-- Backfill tmogHand for existing items that don't have it
+function Options:BackfillTmogHand()
+    local items = TSM.db.profile.transmogs.itemList
+    local history = TSM.db.profile.transmogs.itemHistory
+    local updated = 0
+
+    for _, item in ipairs(items) do
+        if not item.tmogHand and item.link then
+            local _, _, _, _, _, _, itemSubClass, _, equipLoc = GetItemInfo(item.link)
+            if itemSubClass then
+                local _, _, hand = TSM:DetectTmogTypeAndSubType(itemSubClass, equipLoc)
+                if hand then
+                    item.tmogHand = hand
+                    -- Also update history
+                    if item.name and history[item.name] then
+                        history[item.name].tmogHand = hand
+                    end
+                    updated = updated + 1
+                end
+            end
+        end
+    end
+
+    TSM:Print(format(L["Hand detection: updated %d items."], updated))
     Options:RefreshTransmogsTab()
 end
 

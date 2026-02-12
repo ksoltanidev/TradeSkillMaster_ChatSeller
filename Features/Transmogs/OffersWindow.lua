@@ -135,7 +135,7 @@ function OW:CreateFrame()
     scrollBar:SetWidth(12)
     local thumbTex = scrollBar:GetThumbTexture()
     thumbTex:SetPoint("CENTER")
-    TSMAPI.Design:SetFrameColor(thumbTex)
+    TSMAPI.Design:SetContentColor(thumbTex)
     thumbTex:SetHeight(50)
     thumbTex:SetWidth(scrollBar:GetWidth())
     _G[scrollBar:GetName() .. "ScrollUpButton"]:Hide()
@@ -232,186 +232,191 @@ end
 -- Row Creation
 -- ===================================================================================== --
 
+function OW:CreateSingleRow(parent, index, contentWidth)
+    local row = CreateFrame("Frame", "TSMOffersRow" .. index, parent)
+    row:SetHeight(private.ROW_HEIGHT)
+    if index == 1 then
+        row:SetPoint("TOPLEFT", 0, -(HEAD_HEIGHT + HEAD_SPACE))
+        row:SetPoint("TOPRIGHT", -15, -(HEAD_HEIGHT + HEAD_SPACE))
+    else
+        row:SetPoint("TOPLEFT", private.rows[index - 1], "BOTTOMLEFT")
+        row:SetPoint("TOPRIGHT", private.rows[index - 1], "BOTTOMRIGHT")
+    end
+
+    -- Highlight
+    local highlight = row:CreateTexture()
+    highlight:SetAllPoints()
+    highlight:SetTexture(1, 0.9, 0, 0.3)
+    highlight:Hide()
+    row.highlight = highlight
+
+    -- Alternating background
+    if index % 2 == 0 then
+        local bgTex = row:CreateTexture(nil, "BACKGROUND")
+        bgTex:SetAllPoints()
+        bgTex:SetTexture("Interface\\WorldStateFrame\\WorldStateFinalScore-Highlight")
+        bgTex:SetTexCoord(0.017, 1, 0.083, 0.909)
+        bgTex:SetAlpha(0.3)
+    end
+
+    -- Col 1: Item (Button with FontString + tooltip)
+    local itemBtn = CreateFrame("Button", nil, row)
+    itemBtn:SetPoint("TOPLEFT")
+    itemBtn:SetWidth(COL_INFO[1].width * contentWidth)
+    itemBtn:SetHeight(private.ROW_HEIGHT)
+    local itemText = itemBtn:CreateFontString()
+    itemText:SetFont(TSMAPI.Design:GetContentFont("small"))
+    itemText:SetJustifyH("LEFT")
+    itemText:SetJustifyV("CENTER")
+    itemText:SetPoint("TOPLEFT", 2, -1)
+    itemText:SetPoint("BOTTOMRIGHT", -2, 1)
+    itemBtn:SetFontString(itemText)
+    itemBtn:SetScript("OnEnter", function(self)
+        row.highlight:Show()
+        if self.link then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            TSMAPI:SafeTooltipLink(self.link)
+            GameTooltip:Show()
+        end
+    end)
+    itemBtn:SetScript("OnLeave", function()
+        row.highlight:Hide()
+        GameTooltip:ClearLines()
+        GameTooltip:Hide()
+    end)
+    row.itemBtn = itemBtn
+
+    -- Col 2: Buyer (FontString)
+    local buyerText = row:CreateFontString(nil, "OVERLAY")
+    buyerText:SetFont(TSMAPI.Design:GetContentFont("small"))
+    buyerText:SetJustifyH("LEFT")
+    buyerText:SetJustifyV("CENTER")
+    buyerText:SetPoint("TOPLEFT", itemBtn, "TOPRIGHT", 2, 0)
+    buyerText:SetWidth(COL_INFO[2].width * contentWidth)
+    buyerText:SetHeight(private.ROW_HEIGHT)
+    TSMAPI.Design:SetWidgetTextColor(buyerText)
+    row.buyerText = buyerText
+
+    -- Col 3: Price (EditBox)
+    local priceBox = CreateFrame("EditBox", "TSMOffersPriceBox" .. index, row, "InputBoxTemplate")
+    priceBox:SetPoint("TOPLEFT", buyerText, "TOPRIGHT", 2, -4)
+    priceBox:SetWidth(COL_INFO[3].width * contentWidth - 8)
+    priceBox:SetHeight(private.ROW_HEIGHT - 8)
+    priceBox:SetAutoFocus(false)
+    priceBox:SetFont(TSMAPI.Design:GetContentFont("small"))
+    priceBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    priceBox:SetScript("OnEnterPressed", function(self)
+        local offerIndex = self:GetParent().offerIndex
+        if offerIndex then
+            local goldAmount = tonumber(self:GetText())
+            if goldAmount and goldAmount > 0 then
+                local offer = TSM.db.profile.transmogs.offerList[offerIndex]
+                if offer then
+                    offer.offeredPrice = goldAmount * 10000
+                    offer.isUnderSetPrice = offer.setPrice and (offer.offeredPrice < offer.setPrice) or false
+                    OW:Refresh()
+                end
+            end
+        end
+        self:ClearFocus()
+    end)
+    row.priceBox = priceBox
+
+    -- Col 4: Status (FontString)
+    local statusText = row:CreateFontString(nil, "OVERLAY")
+    statusText:SetFont(TSMAPI.Design:GetContentFont("small"))
+    statusText:SetJustifyH("CENTER")
+    statusText:SetJustifyV("CENTER")
+    statusText:SetPoint("TOPLEFT", priceBox, "TOPRIGHT", 6, 4)
+    statusText:SetWidth(COL_INFO[4].width * contentWidth)
+    statusText:SetHeight(private.ROW_HEIGHT)
+    row.statusText = statusText
+
+    -- Col 5: Actions (container with buttons)
+    local actionsFrame = CreateFrame("Frame", nil, row)
+    actionsFrame:SetPoint("TOPLEFT", statusText, "TOPRIGHT", 2, 0)
+    actionsFrame:SetWidth(COL_INFO[5].width * contentWidth)
+    actionsFrame:SetHeight(private.ROW_HEIGHT)
+
+    -- "Offered" state buttons: Accept + Refuse
+    local acceptBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+    acceptBtn:SetSize(55, private.ROW_HEIGHT - 6)
+    acceptBtn:SetPoint("LEFT", 2, 0)
+    acceptBtn:SetText(L["Accept"])
+    acceptBtn:SetNormalFontObject(GameFontNormalSmall)
+    acceptBtn:SetHighlightFontObject(GameFontHighlightSmall)
+    row.acceptBtn = acceptBtn
+
+    local refuseBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+    refuseBtn:SetSize(55, private.ROW_HEIGHT - 6)
+    refuseBtn:SetPoint("LEFT", acceptBtn, "RIGHT", 4, 0)
+    refuseBtn:SetText(L["Refuse"])
+    refuseBtn:SetNormalFontObject(GameFontNormalSmall)
+    refuseBtn:SetHighlightFontObject(GameFontHighlightSmall)
+    row.refuseBtn = refuseBtn
+
+    -- "Accepted"/"CoD Sent" state buttons: Gather + Ask How + CoD + Cancel + Confirm
+    local gatherBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+    gatherBtn:SetSize(45, private.ROW_HEIGHT - 6)
+    gatherBtn:SetPoint("LEFT", 2, 0)
+    gatherBtn:SetText(L["Gather"])
+    gatherBtn:SetNormalFontObject(GameFontNormalSmall)
+    gatherBtn:SetHighlightFontObject(GameFontHighlightSmall)
+    row.gatherBtn = gatherBtn
+
+    local askHowBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+    askHowBtn:SetSize(50, private.ROW_HEIGHT - 6)
+    askHowBtn:SetPoint("LEFT", gatherBtn, "RIGHT", 4, 0)
+    askHowBtn:SetText(L["Ask How"])
+    askHowBtn:SetNormalFontObject(GameFontNormalSmall)
+    askHowBtn:SetHighlightFontObject(GameFontHighlightSmall)
+    row.askHowBtn = askHowBtn
+
+    local codBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+    codBtn:SetSize(35, private.ROW_HEIGHT - 6)
+    codBtn:SetPoint("LEFT", askHowBtn, "RIGHT", 4, 0)
+    codBtn:SetText(L["CoD"])
+    codBtn:SetNormalFontObject(GameFontNormalSmall)
+    codBtn:SetHighlightFontObject(GameFontHighlightSmall)
+    row.codBtn = codBtn
+
+    local cancelBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+    cancelBtn:SetSize(42, private.ROW_HEIGHT - 6)
+    cancelBtn:SetPoint("LEFT", codBtn, "RIGHT", 4, 0)
+    cancelBtn:SetText(L["Cancel"])
+    cancelBtn:SetNormalFontObject(GameFontNormalSmall)
+    cancelBtn:SetHighlightFontObject(GameFontHighlightSmall)
+    row.cancelBtn = cancelBtn
+
+    -- "Confirm" button (shown on all statuses except "Offered")
+    local confirmBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
+    confirmBtn:SetSize(50, private.ROW_HEIGHT - 6)
+    confirmBtn:SetPoint("LEFT", cancelBtn, "RIGHT", 4, 0)
+    confirmBtn:SetText(L["Confirm"])
+    confirmBtn:SetNormalFontObject(GameFontNormalSmall)
+    confirmBtn:SetHighlightFontObject(GameFontHighlightSmall)
+    row.confirmBtn = confirmBtn
+
+    -- Initially hide all action buttons
+    acceptBtn:Hide()
+    refuseBtn:Hide()
+    gatherBtn:Hide()
+    askHowBtn:Hide()
+    codBtn:Hide()
+    cancelBtn:Hide()
+    confirmBtn:Hide()
+
+    row.actionsFrame = actionsFrame
+    row:Hide()
+    return row
+end
+
 function OW:CreateRows(parent)
     private.rows = {}
     local contentWidth = FRAME_WIDTH - 30
 
     for i = 1, private.NUM_ROWS do
-        local row = CreateFrame("Frame", "TSMOffersRow" .. i, parent)
-        row:SetHeight(private.ROW_HEIGHT)
-        if i == 1 then
-            row:SetPoint("TOPLEFT", 0, -(HEAD_HEIGHT + HEAD_SPACE))
-            row:SetPoint("TOPRIGHT", -15, -(HEAD_HEIGHT + HEAD_SPACE))
-        else
-            row:SetPoint("TOPLEFT", private.rows[i - 1], "BOTTOMLEFT")
-            row:SetPoint("TOPRIGHT", private.rows[i - 1], "BOTTOMRIGHT")
-        end
-
-        -- Highlight
-        local highlight = row:CreateTexture()
-        highlight:SetAllPoints()
-        highlight:SetTexture(1, 0.9, 0, 0.3)
-        highlight:Hide()
-        row.highlight = highlight
-
-        -- Alternating background
-        if i % 2 == 0 then
-            local bgTex = row:CreateTexture(nil, "BACKGROUND")
-            bgTex:SetAllPoints()
-            bgTex:SetTexture("Interface\\WorldStateFrame\\WorldStateFinalScore-Highlight")
-            bgTex:SetTexCoord(0.017, 1, 0.083, 0.909)
-            bgTex:SetAlpha(0.3)
-        end
-
-        -- Col 1: Item (Button with FontString + tooltip)
-        local itemBtn = CreateFrame("Button", nil, row)
-        itemBtn:SetPoint("TOPLEFT")
-        itemBtn:SetWidth(COL_INFO[1].width * contentWidth)
-        itemBtn:SetHeight(private.ROW_HEIGHT)
-        local itemText = itemBtn:CreateFontString()
-        itemText:SetFont(TSMAPI.Design:GetContentFont("small"))
-        itemText:SetJustifyH("LEFT")
-        itemText:SetJustifyV("CENTER")
-        itemText:SetPoint("TOPLEFT", 2, -1)
-        itemText:SetPoint("BOTTOMRIGHT", -2, 1)
-        itemBtn:SetFontString(itemText)
-        itemBtn:SetScript("OnEnter", function(self)
-            row.highlight:Show()
-            if self.link then
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                TSMAPI:SafeTooltipLink(self.link)
-                GameTooltip:Show()
-            end
-        end)
-        itemBtn:SetScript("OnLeave", function()
-            row.highlight:Hide()
-            GameTooltip:ClearLines()
-            GameTooltip:Hide()
-        end)
-        row.itemBtn = itemBtn
-
-        -- Col 2: Buyer (FontString)
-        local buyerText = row:CreateFontString(nil, "OVERLAY")
-        buyerText:SetFont(TSMAPI.Design:GetContentFont("small"))
-        buyerText:SetJustifyH("LEFT")
-        buyerText:SetJustifyV("CENTER")
-        buyerText:SetPoint("TOPLEFT", itemBtn, "TOPRIGHT", 2, 0)
-        buyerText:SetWidth(COL_INFO[2].width * contentWidth)
-        buyerText:SetHeight(private.ROW_HEIGHT)
-        TSMAPI.Design:SetWidgetTextColor(buyerText)
-        row.buyerText = buyerText
-
-        -- Col 3: Price (EditBox)
-        local priceBox = CreateFrame("EditBox", "TSMOffersPriceBox" .. i, row, "InputBoxTemplate")
-        priceBox:SetPoint("TOPLEFT", buyerText, "TOPRIGHT", 2, -4)
-        priceBox:SetWidth(COL_INFO[3].width * contentWidth - 8)
-        priceBox:SetHeight(private.ROW_HEIGHT - 8)
-        priceBox:SetAutoFocus(false)
-        priceBox:SetFont(TSMAPI.Design:GetContentFont("small"))
-        priceBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-        priceBox:SetScript("OnEnterPressed", function(self)
-            local offerIndex = self:GetParent().offerIndex
-            if offerIndex then
-                local goldAmount = tonumber(self:GetText())
-                if goldAmount and goldAmount > 0 then
-                    local offer = TSM.db.profile.transmogs.offerList[offerIndex]
-                    if offer then
-                        offer.offeredPrice = goldAmount * 10000
-                        offer.isUnderSetPrice = offer.setPrice and (offer.offeredPrice < offer.setPrice) or false
-                        OW:Refresh()
-                    end
-                end
-            end
-            self:ClearFocus()
-        end)
-        row.priceBox = priceBox
-
-        -- Col 4: Status (FontString)
-        local statusText = row:CreateFontString(nil, "OVERLAY")
-        statusText:SetFont(TSMAPI.Design:GetContentFont("small"))
-        statusText:SetJustifyH("CENTER")
-        statusText:SetJustifyV("CENTER")
-        statusText:SetPoint("TOPLEFT", priceBox, "TOPRIGHT", 6, 4)
-        statusText:SetWidth(COL_INFO[4].width * contentWidth)
-        statusText:SetHeight(private.ROW_HEIGHT)
-        row.statusText = statusText
-
-        -- Col 5: Actions (container with buttons)
-        local actionsFrame = CreateFrame("Frame", nil, row)
-        actionsFrame:SetPoint("TOPLEFT", statusText, "TOPRIGHT", 2, 0)
-        actionsFrame:SetWidth(COL_INFO[5].width * contentWidth)
-        actionsFrame:SetHeight(private.ROW_HEIGHT)
-
-        -- "Offered" state buttons: Accept + Refuse
-        local acceptBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        acceptBtn:SetSize(55, private.ROW_HEIGHT - 6)
-        acceptBtn:SetPoint("LEFT", 2, 0)
-        acceptBtn:SetText(L["Accept"])
-        acceptBtn:SetNormalFontObject(GameFontNormalSmall)
-        acceptBtn:SetHighlightFontObject(GameFontHighlightSmall)
-        row.acceptBtn = acceptBtn
-
-        local refuseBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        refuseBtn:SetSize(55, private.ROW_HEIGHT - 6)
-        refuseBtn:SetPoint("LEFT", acceptBtn, "RIGHT", 4, 0)
-        refuseBtn:SetText(L["Refuse"])
-        refuseBtn:SetNormalFontObject(GameFontNormalSmall)
-        refuseBtn:SetHighlightFontObject(GameFontHighlightSmall)
-        row.refuseBtn = refuseBtn
-
-        -- "Accepted"/"CoD Sent" state buttons: Gather + Ask How + CoD + Cancel + Confirm
-        local gatherBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        gatherBtn:SetSize(45, private.ROW_HEIGHT - 6)
-        gatherBtn:SetPoint("LEFT", 2, 0)
-        gatherBtn:SetText(L["Gather"])
-        gatherBtn:SetNormalFontObject(GameFontNormalSmall)
-        gatherBtn:SetHighlightFontObject(GameFontHighlightSmall)
-        row.gatherBtn = gatherBtn
-
-        local askHowBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        askHowBtn:SetSize(50, private.ROW_HEIGHT - 6)
-        askHowBtn:SetPoint("LEFT", gatherBtn, "RIGHT", 4, 0)
-        askHowBtn:SetText(L["Ask How"])
-        askHowBtn:SetNormalFontObject(GameFontNormalSmall)
-        askHowBtn:SetHighlightFontObject(GameFontHighlightSmall)
-        row.askHowBtn = askHowBtn
-
-        local codBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        codBtn:SetSize(35, private.ROW_HEIGHT - 6)
-        codBtn:SetPoint("LEFT", askHowBtn, "RIGHT", 4, 0)
-        codBtn:SetText(L["CoD"])
-        codBtn:SetNormalFontObject(GameFontNormalSmall)
-        codBtn:SetHighlightFontObject(GameFontHighlightSmall)
-        row.codBtn = codBtn
-
-        local cancelBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        cancelBtn:SetSize(42, private.ROW_HEIGHT - 6)
-        cancelBtn:SetPoint("LEFT", codBtn, "RIGHT", 4, 0)
-        cancelBtn:SetText(L["Cancel"])
-        cancelBtn:SetNormalFontObject(GameFontNormalSmall)
-        cancelBtn:SetHighlightFontObject(GameFontHighlightSmall)
-        row.cancelBtn = cancelBtn
-
-        -- "Confirm" button (shown on all statuses except "Offered")
-        local confirmBtn = CreateFrame("Button", nil, actionsFrame, "UIPanelButtonTemplate")
-        confirmBtn:SetSize(50, private.ROW_HEIGHT - 6)
-        confirmBtn:SetPoint("LEFT", cancelBtn, "RIGHT", 4, 0)
-        confirmBtn:SetText(L["Confirm"])
-        confirmBtn:SetNormalFontObject(GameFontNormalSmall)
-        confirmBtn:SetHighlightFontObject(GameFontHighlightSmall)
-        row.confirmBtn = confirmBtn
-
-        -- Initially hide all action buttons
-        acceptBtn:Hide()
-        refuseBtn:Hide()
-        gatherBtn:Hide()
-        askHowBtn:Hide()
-        codBtn:Hide()
-        cancelBtn:Hide()
-        confirmBtn:Hide()
-
-        row.actionsFrame = actionsFrame
-        row:Hide()
+        local row = OW:CreateSingleRow(parent, i, contentWidth)
         tinsert(private.rows, row)
     end
 end
@@ -428,6 +433,22 @@ function OW:UpdateLayout()
     for i, col in ipairs(private.headCols) do
         col:SetWidth(COL_INFO[i].width * contentWidth)
     end
+
+    -- Dynamic row count based on container height
+    local containerHeight = private.stContainer:GetHeight()
+    local availableHeight = containerHeight - HEAD_HEIGHT - HEAD_SPACE
+    local newNumRows = math.floor(availableHeight / private.ROW_HEIGHT)
+    if newNumRows < 1 then newNumRows = 1 end
+
+    -- Create additional rows if window grew
+    if newNumRows > #private.rows then
+        for i = #private.rows + 1, newNumRows do
+            local row = OW:CreateSingleRow(private.stContainer, i, contentWidth)
+            tinsert(private.rows, row)
+        end
+    end
+
+    private.NUM_ROWS = newNumRows
 
     -- Update row widgets
     for _, row in ipairs(private.rows) do
@@ -452,49 +473,55 @@ function OW:DrawRows()
     FauxScrollFrame_Update(private.scrollFrame, #offerList, private.NUM_ROWS, private.ROW_HEIGHT)
     local offset = FauxScrollFrame_GetOffset(private.scrollFrame)
 
-    for i = 1, private.NUM_ROWS do
+    for i = 1, #private.rows do
         local row = private.rows[i]
-        local dataIndex = i + offset
-        local offer = offerList[dataIndex]
 
-        if offer then
-            row:Show()
-            row.offerIndex = dataIndex
-
-            -- Item column
-            row.itemBtn:SetText(offer.itemLink or offer.itemName or "Unknown")
-            row.itemBtn.link = offer.itemLink
-
-            -- Buyer column
-            row.buyerText:SetText(offer.buyer or "")
-
-            -- Price column (display in gold)
-            local priceGold = offer.offeredPrice and math.floor(offer.offeredPrice / 10000) or 0
-            row.priceBox:SetText(tostring(priceGold))
-
-            -- Color the price red if under set price
-            if offer.isUnderSetPrice then
-                row.priceBox:SetTextColor(1, 0.3, 0.3)
-            else
-                row.priceBox:SetTextColor(1, 1, 1)
-            end
-
-            -- Status column with color coding
-            local status = offer.status or "Offered"
-            row.statusText:SetText(status)
-            if status == "Offered" then
-                row.statusText:SetTextColor(1, 0.82, 0)     -- Gold
-            elseif status == "Accepted" then
-                row.statusText:SetTextColor(0, 1, 0)        -- Green
-            elseif status == "CoD Sent" then
-                row.statusText:SetTextColor(0.5, 0.5, 1)    -- Blue
-            end
-
-            -- Show/hide action buttons based on status
-            OW:SetupActionButtons(row, offer, dataIndex)
-        else
+        if i > private.NUM_ROWS then
             row:Hide()
             row.offerIndex = nil
+        else
+            local dataIndex = i + offset
+            local offer = offerList[dataIndex]
+
+            if offer then
+                row:Show()
+                row.offerIndex = dataIndex
+
+                -- Item column
+                row.itemBtn:SetText(offer.itemLink or offer.itemName or "Unknown")
+                row.itemBtn.link = offer.itemLink
+
+                -- Buyer column
+                row.buyerText:SetText(offer.buyer or "")
+
+                -- Price column (display in gold)
+                local priceGold = offer.offeredPrice and math.floor(offer.offeredPrice / 10000) or 0
+                row.priceBox:SetText(tostring(priceGold))
+
+                -- Color the price red if under set price
+                if offer.isUnderSetPrice then
+                    row.priceBox:SetTextColor(1, 0.3, 0.3)
+                else
+                    row.priceBox:SetTextColor(1, 1, 1)
+                end
+
+                -- Status column with color coding
+                local status = offer.status or "Offered"
+                row.statusText:SetText(status)
+                if status == "Offered" then
+                    row.statusText:SetTextColor(1, 0.82, 0)     -- Gold
+                elseif status == "Accepted" then
+                    row.statusText:SetTextColor(0, 1, 0)        -- Green
+                elseif status == "CoD Sent" then
+                    row.statusText:SetTextColor(0.5, 0.5, 1)    -- Blue
+                end
+
+                -- Show/hide action buttons based on status
+                OW:SetupActionButtons(row, offer, dataIndex)
+            else
+                row:Hide()
+                row.offerIndex = nil
+            end
         end
     end
 end

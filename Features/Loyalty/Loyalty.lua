@@ -6,12 +6,6 @@
 local TSM = select(2, ...)
 local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ChatSeller")
 
--- Normalize player name to WoW canonical format: first letter uppercase, rest lowercase
-local function NormalizeName(name)
-    if not name or name == "" then return name end
-    return strupper(strsub(name, 1, 1)) .. strlower(strsub(name, 2))
-end
-
 -- ===================================================================================== --
 -- Award Loyalty Points
 -- ===================================================================================== --
@@ -25,18 +19,20 @@ function TSM:AwardLoyaltyPoints(buyer, copperAmount)
         return 0, 0
     end
 
-    buyer = NormalizeName(buyer)
+    buyer = TSM:NormalizeName(buyer)
     local loyalty = TSM.db.profile.loyalty
     local pointsPerGold = loyalty.pointsPerGold or 10
     local pointsAwarded = math.floor(copperAmount * pointsPerGold / 10000)
 
+    local pd = TSM:GetPlayerData(buyer)
+
     if pointsAwarded <= 0 then
-        return 0, loyalty.playerPoints[buyer] or 0
+        return 0, pd.points
     end
 
-    loyalty.playerPoints[buyer] = (loyalty.playerPoints[buyer] or 0) + pointsAwarded
-    loyalty.playerTotalPoints[buyer] = (loyalty.playerTotalPoints[buyer] or 0) + pointsAwarded
-    return pointsAwarded, loyalty.playerPoints[buyer]
+    pd.points = pd.points + pointsAwarded
+    pd.totalPoints = pd.totalPoints + pointsAwarded
+    return pointsAwarded, pd.points
 end
 
 -- ===================================================================================== --
@@ -84,15 +80,17 @@ function TSM:CompleteOffer(offerIndex)
 
     -- Award referrer bonus points
     if pointsAwarded > 0 and offer.buyer then
-        local normalizedBuyer = NormalizeName(offer.buyer)
-        local referrer = loyalty.playerReferrers and loyalty.playerReferrers[normalizedBuyer]
-        if referrer then referrer = NormalizeName(referrer) end
+        local normalizedBuyer = TSM:NormalizeName(offer.buyer)
+        local buyerData = TSM:GetPlayerData(normalizedBuyer)
+        local referrer = (buyerData.referrer ~= "") and buyerData.referrer or nil
+        if referrer then referrer = TSM:NormalizeName(referrer) end
         if referrer then
             local bonusPct = loyalty.referrerBonusPct or 20
             local referrerBonus = math.floor(pointsAwarded * bonusPct / 100)
             if referrerBonus > 0 then
-                loyalty.playerPoints[referrer] = (loyalty.playerPoints[referrer] or 0) + referrerBonus
-                loyalty.playerTotalPoints[referrer] = (loyalty.playerTotalPoints[referrer] or 0) + referrerBonus
+                local refData = TSM:GetPlayerData(referrer)
+                refData.points = refData.points + referrerBonus
+                refData.totalPoints = refData.totalPoints + referrerBonus
 
                 -- Whisper the referrer about their bonus points
                 local prefix = TSM.db.profile.commandPrefix or ""
@@ -152,8 +150,9 @@ end
 -- @param sender: player name who whispered
 function TSM:HandleLoyaltyCommand(sender)
     local loyalty = TSM.db.profile.loyalty
-    sender = NormalizeName(sender)
-    local currentPoints = loyalty.playerPoints[sender] or 0
+    sender = TSM:NormalizeName(sender)
+    local pd = TSM:GetPlayerData(sender)
+    local currentPoints = pd.points
     local threshold = loyalty.rewardThreshold or 10000
     local discount = loyalty.rewardGoldDiscount or 100
     local pointsPerGold = loyalty.pointsPerGold or 10
@@ -198,7 +197,8 @@ function TSM:HandleLoyaltyCommand(sender)
 
     -- Message 5: Rank promo
     local leaderboard = {}
-    for name, total in pairs(loyalty.playerTotalPoints) do
+    for name, data in pairs(TSM.db.profile.players) do
+        local total = data.totalPoints or 0
         if total > 0 then
             tinsert(leaderboard, { name = name, total = total })
         end
@@ -263,11 +263,12 @@ function TSM:HandleRefCommand(sender, refName)
     end
 
     -- Normalize names for consistent storage
-    local normalizedSender = NormalizeName(sender)
-    local normalizedRef = NormalizeName(refName)
+    local normalizedSender = TSM:NormalizeName(sender)
+    local normalizedRef = TSM:NormalizeName(refName)
 
     -- Set referrer (overwrites silently if already set)
-    loyalty.playerReferrers[normalizedSender] = normalizedRef
+    local senderData = TSM:GetPlayerData(normalizedSender)
+    senderData.referrer = normalizedRef
 
     -- Whisper confirmation to the referred player
     SendChatMessage(
@@ -311,12 +312,14 @@ end
 -- @param sender: player name who whispered
 function TSM:HandleRankCommand(sender)
     local loyalty = TSM.db.profile.loyalty
-    sender = NormalizeName(sender)
-    local senderTotal = loyalty.playerTotalPoints[sender] or 0
+    sender = TSM:NormalizeName(sender)
+    local senderData = TSM:GetPlayerData(sender)
+    local senderTotal = senderData.totalPoints
 
-    -- Build leaderboard from playerTotalPoints, sorted descending
+    -- Build leaderboard from players, sorted descending
     local leaderboard = {}
-    for name, total in pairs(loyalty.playerTotalPoints) do
+    for name, data in pairs(TSM.db.profile.players) do
+        local total = data.totalPoints or 0
         if total > 0 then
             tinsert(leaderboard, { name = name, total = total })
         end

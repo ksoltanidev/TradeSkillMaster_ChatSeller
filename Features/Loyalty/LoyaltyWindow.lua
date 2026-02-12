@@ -76,20 +76,18 @@ end
 -- ===================================================================================== --
 
 function LW:BuildSortedPlayers()
-    local playerPoints = TSM.db.profile.loyalty.playerPoints
-    local playerTotalPoints = TSM.db.profile.loyalty.playerTotalPoints
-    local referrers = TSM.db.profile.loyalty.playerReferrers
+    local players = TSM.db.profile.players
     local filter = strlower(strtrim(private.searchFilter or ""))
 
     wipe(private.sortedPlayers)
 
-    for name, points in pairs(playerPoints) do
+    for name, data in pairs(players) do
         if filter == "" or strfind(strlower(name), filter, 1, true) then
             tinsert(private.sortedPlayers, {
                 name = name,
-                points = points,
-                totalPoints = playerTotalPoints[name] or 0,
-                referrer = referrers[name] or "",
+                points = data.points or 0,
+                totalPoints = data.totalPoints or 0,
+                referrer = data.referrer or "",
             })
         end
     end
@@ -121,7 +119,7 @@ function LW:CreateFrame()
 
     -- Title
     local title = TSMAPI.GUI:CreateLabel(frame)
-    title:SetText(L["Loyalty Points Manager"])
+    title:SetText(L["Clients"])
     title:SetPoint("TOPLEFT")
     title:SetPoint("TOPRIGHT")
     title:SetHeight(20)
@@ -365,7 +363,8 @@ function LW:CreateSingleRow(parent, index, contentWidth)
             local newPoints = tonumber(self:GetText())
             if newPoints and newPoints >= 0 then
                 newPoints = math.floor(newPoints)
-                TSM.db.profile.loyalty.playerPoints[playerName] = newPoints
+                local pd = TSM:GetPlayerData(playerName)
+                pd.points = newPoints
                 TSM:Print(format(L["Updated %s to %d loyalty points."], playerName, newPoints))
                 LW:Refresh()
             end
@@ -388,7 +387,8 @@ function LW:CreateSingleRow(parent, index, contentWidth)
             local newTotal = tonumber(self:GetText())
             if newTotal and newTotal >= 0 then
                 newTotal = math.floor(newTotal)
-                TSM.db.profile.loyalty.playerTotalPoints[playerName] = newTotal
+                local pd = TSM:GetPlayerData(playerName)
+                pd.totalPoints = newTotal
                 TSM:Print(format(L["Updated %s to %d total loyalty points."], playerName, newTotal))
                 LW:Refresh()
             end
@@ -513,9 +513,8 @@ function LW:DrawRows()
 
                 -- Remove button callback
                 row.removeBtn:SetScript("OnClick", function()
-                    TSM.db.profile.loyalty.playerPoints[entry.name] = nil
-                    TSM.db.profile.loyalty.playerTotalPoints[entry.name] = nil
-                    TSM:Print(format(L["Removed %s from loyalty program."], entry.name))
+                    TSM.db.profile.players[entry.name] = nil
+                    TSM:Print(format(L["Removed %s from clients."], entry.name))
                     LW:Refresh()
                 end)
             else
@@ -657,8 +656,9 @@ function LW:AddPlayer()
     points = math.floor(math.max(0, points))
 
     -- Set points and total points
-    TSM.db.profile.loyalty.playerPoints[nameInput] = points
-    TSM.db.profile.loyalty.playerTotalPoints[nameInput] = points
+    local pd = TSM:GetPlayerData(nameInput)
+    pd.points = points
+    pd.totalPoints = points
     TSM:Print(format(L["Added %s with %d loyalty points."], nameInput, points))
 
     -- Close modal and refresh

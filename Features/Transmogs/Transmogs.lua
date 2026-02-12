@@ -203,6 +203,11 @@ end
 
 -- Handle the tmog command: gem tmog [type] [subtype] [name filter]
 function TSM:HandleTransmogCommand(sender, args)
+    -- Auto add friend if enabled
+    if TSM.db.profile.transmogs.autoAddFriend then
+        AddFriend(sender)
+    end
+
     -- If no args provided, send help message
     if not args or args == "" then
         TSM:SendTransmogHelpMessage(sender)
@@ -226,6 +231,11 @@ function TSM:HandleTransmogCommand(sender, args)
         TSM:SendTransmogHelpMessage(sender)
         return
     end
+
+    -- Record last tmog search for this player
+    local pd = TSM:GetPlayerData(TSM:NormalizeName(sender))
+    pd.lastTmogSearch = args
+    pd.lastTmogSearchTime = time()
 
     -- Get matching items
     local matchingItems = TSM:FilterTransmogItems(filters)
@@ -360,14 +370,14 @@ function TSM:SendTransmogResponses(sender, items)
 
 end
 
--- Send help message for tmog command
+-- Send help message for tmog command. Never use "|" char because its throws an error.
 function TSM:SendTransmogHelpMessage(sender)
     local prefix = TSM.db.profile.commandPrefix or ""
     local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
     SendChatMessage("Welcome to the Transmog Shop! Browse cosmetic items using chat messages.", "WHISPER", nil, sender)
     SendChatMessage("Usage Examples: '" .. cmdPrefix .. "tmog mount', '" .. cmdPrefix .. "tmog weapon sword', '" .. cmdPrefix .. "tmog windfury'", "WHISPER", nil, sender)
     SendChatMessage("Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars, free", "WHISPER", nil, sender)
-    SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown | Filters: 1h, 2h", "WHISPER", nil, sender)
+    SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown, 1h, 2h", "WHISPER", nil, sender)
     SendChatMessage("Armor subtypes: head, shoulders, chest, wrist, gloves, waist, legs, feet, back", "WHISPER", nil, sender)
     SendChatMessage("Name filter: use quotes for multi-word search, e.g. " .. cmdPrefix .. "tmog \"fire sword\"", "WHISPER", nil, sender)
     SendChatMessage("Example: '" .. cmdPrefix .. "tmog weapon sword' or '" .. cmdPrefix .. "tmog fire'", "WHISPER", nil, sender)
