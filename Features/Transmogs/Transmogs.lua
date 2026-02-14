@@ -15,7 +15,7 @@ local ITEMS_PER_PAGE = 50
 
 -- Base types
 local TMOG_TYPES = {
-    "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars",
+    "weapon", "mount", "pet", "whistle", "demon", "incarnation", "armor set", "shield", "tabard", "misc", "illusions", "altars",
 }
 
 -- Type keyword aliases -> canonical type name
@@ -29,6 +29,9 @@ local TYPE_ALIASES = {
     misc = "misc", divers = "misc", varios = "misc",
     illusion = "illusions", illusions = "illusions",
     altar = "altars", altars = "altars", autel = "altars", autels = "altars",
+    whistle = "whistle", whistles = "whistle", sifflet = "whistle", sifflets = "whistle", silbato = "whistle", silbatos = "whistle",
+    demon = "demon", demons = "demon", ["démon"] = "demon", ["démons"] = "demon", demonio = "demon", demonios = "demon",
+    incarnation = "incarnation", incarnations = "incarnation", incarnacion = "incarnation", incarnaciones = "incarnation",
 }
 
 -- Weapon subtype aliases -> canonical subtype name (infers tmogType = "weapon")
@@ -440,7 +443,7 @@ function TSM:SendTransmogHelpMessage(sender)
     local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
     SendChatMessage("Welcome to the Transmog Shop! Browse cosmetic items using chat messages.", "WHISPER", nil, sender)
     SendChatMessage("Usage Examples: '" .. cmdPrefix .. "tmog mount', '" .. cmdPrefix .. "tmog weapon sword', '" .. cmdPrefix .. "tmog windfury'", "WHISPER", nil, sender)
-    SendChatMessage("Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars, free, new", "WHISPER", nil, sender)
+    SendChatMessage("Types: weapon, mount, pet, whistle, demon, incarnation, set, shield, tabard, misc, illusions, altars, free, new", "WHISPER", nil, sender)
     SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown, 1h, 2h", "WHISPER", nil, sender)
     SendChatMessage("Armor subtypes: head, shoulders, chest, wrist, gloves, waist, legs, feet, back", "WHISPER", nil, sender)
     SendChatMessage("Name filter: use quotes for multi-word search, e.g. " .. cmdPrefix .. "tmog \"fire sword\"", "WHISPER", nil, sender)

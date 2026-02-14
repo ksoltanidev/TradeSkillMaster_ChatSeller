@@ -323,11 +323,11 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
 
     -- Header row
     tinsert(children, { type = "Label", text = "|cffffd100S|r", relativeWidth = 0.05 })
-    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Item"] .. "|r", relativeWidth = 0.30 })
+    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Item"] .. "|r", relativeWidth = 0.26 })
     tinsert(children, { type = "Label", text = "|cffffd100" .. L["Price"] .. "|r", relativeWidth = 0.10 })
-    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Type"] .. "|r", relativeWidth = 0.18 })
-    tinsert(children, { type = "Label", text = "|cffffd100" .. L["SubType"] .. "|r", relativeWidth = 0.18 })
-    tinsert(children, { type = "Label", text = "", relativeWidth = 0.18 })
+    tinsert(children, { type = "Label", text = "|cffffd100" .. L["Type"] .. "|r", relativeWidth = 0.16 })
+    tinsert(children, { type = "Label", text = "|cffffd100" .. L["SubType"] .. "|r", relativeWidth = 0.16 })
+    tinsert(children, { type = "Label", text = "", relativeWidth = 0.26 })
 
     -- Get only the items for the current page
     local pagedItems = GetPagedItems(filteredItems)
@@ -335,6 +335,7 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
     -- Item rows
     for _, entry in ipairs(pagedItems) do
         local item = entry.item
+        local originalIndex = entry.index
         local priceGold = (item.price and item.price > 0) and tostring(math.floor(item.price / 10000)) or ""
         local currentType = item.tmogType or "misc"
         local currentSubType = item.tmogSubType or "none"
@@ -354,7 +355,7 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
         tinsert(children, {
             type = "InteractiveLabel",
             text = item.link or item.name or "Unknown",
-            relativeWidth = 0.30,
+            relativeWidth = 0.26,
             tooltip = item.link,
             callback = function()
                 if IsControlKeyDown() and item.link then
@@ -383,7 +384,7 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
         tinsert(children, {
             type = "Dropdown",
             label = "",
-            relativeWidth = 0.18,
+            relativeWidth = 0.16,
             list = GetTypeDropdownList(),
             order = GetTypeDropdownOrder(),
             value = currentType,
@@ -401,7 +402,7 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
         tinsert(children, {
             type = "Dropdown",
             label = "",
-            relativeWidth = 0.18,
+            relativeWidth = 0.16,
             list = GetSubTypeDropdownList(),
             order = GetSubTypeDropdownOrder(),
             value = currentSubType,
@@ -420,7 +421,7 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
         tinsert(children, {
             type = "Button",
             text = L["Publish"],
-            relativeWidth = 0.12,
+            relativeWidth = 0.13,
             callback = function()
                 item.published = true
                 -- Save to history
@@ -434,6 +435,15 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
                     history[item.name].tmogSubType = item.tmogSubType
                     history[item.name].tmogHand = item.tmogHand
                 end
+                Options:RefreshNewTransmogsTab()
+            end,
+        })
+        tinsert(children, {
+            type = "Button",
+            text = L["Delete"],
+            relativeWidth = 0.13,
+            callback = function()
+                tremove(TSM.db.profile.transmogs.itemList, originalIndex)
                 Options:RefreshNewTransmogsTab()
             end,
         })

@@ -28,7 +28,7 @@ end
 
 -- Base types for dropdown
 local TMOG_TYPE_LIST = {
-    "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars",
+    "weapon", "mount", "pet", "whistle", "demon", "incarnation", "armor set", "shield", "tabard", "misc", "illusions", "altars",
 }
 
 -- Display names for types
@@ -36,6 +36,9 @@ local TMOG_TYPE_DISPLAY = {
     ["weapon"] = "Weapon",
     ["mount"] = "Mount",
     ["pet"] = "Pet",
+    ["whistle"] = "Whistle",
+    ["demon"] = "Demon",
+    ["incarnation"] = "Incarnation",
     ["armor set"] = "Armor Set",
     ["shield"] = "Shield",
     ["tabard"] = "Tabard",
@@ -206,12 +209,15 @@ end
 -- ===================================================================================== --
 
 -- Filter options: "all" + each type + "free"
-local FILTER_LIST = { "all", "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars", "free", "out of stock", "new" }
+local FILTER_LIST = { "all", "weapon", "mount", "pet", "whistle", "demon", "incarnation", "armor set", "shield", "tabard", "misc", "illusions", "altars", "free", "out of stock", "new" }
 local FILTER_DISPLAY = {
     ["all"] = L["All"],
     ["weapon"] = "Weapon",
     ["mount"] = "Mount",
     ["pet"] = "Pet",
+    ["whistle"] = "Whistle",
+    ["demon"] = "Demon",
+    ["incarnation"] = "Incarnation",
     ["armor set"] = "Armor Set",
     ["shield"] = "Shield",
     ["tabard"] = "Tabard",
@@ -337,7 +343,7 @@ function Options:LoadTransmogsTab(container)
                         },
                         {
                             type = "Label",
-                            text = L["Types: weapon, mount, pet, set, shield, tabard, misc, illusions, altars"],
+                            text = L["Types: weapon, mount, pet, whistle, demon, incarnation, set, shield, tabard, misc, illusions, altars"],
                             fullWidth = true,
                         },
                         {
@@ -738,7 +744,8 @@ function Options:RefreshTransmogStock()
             local guildTotal = ItemTracker:GetGuildTotal(itemString) or 0
             local personalBanksTotal = ItemTracker:GetPersonalBanksTotal(itemString) or 0
             local realmBankTotal = ItemTracker:GetRealmBankTotal(itemString) or 0
-            local total = (playerTotal or 0) + (altTotal or 0) + guildTotal + personalBanksTotal + realmBankTotal
+            local auctionsTotal = ItemTracker:GetAuctionsTotal(itemString) or 0
+            local total = (playerTotal or 0) + (altTotal or 0) + guildTotal + personalBanksTotal + realmBankTotal + auctionsTotal
             local wasOutOfStock = (item.inStock == false)
             item.inStock = (total > 0)
             -- If item just came back in stock, update availableSince
