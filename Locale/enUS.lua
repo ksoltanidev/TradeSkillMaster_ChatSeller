@@ -121,6 +121,26 @@ L["No more results."] = true
 L["Sync Tmog"] = true
 L["No guild bank tab selected."] = true
 L["Tmog sync: added %d items (%d skipped)."] = true
+L["Gather Free"] = true
+L["Gather Dupes"] = true
+L["Put Missing"] = true
+L["Gather Missing"] = true
+L["Put Dupes"] = true
+L["Gathered %d free transmogs from bank."] = true
+L["No free transmogs found in bank."] = true
+L["Gathered %d duplicate transmogs from realm bank."] = true
+L["No duplicate transmogs found in realm bank."] = true
+L["Stored %d missing transmogs to realm bank (tab %d)."] = true
+L["No missing transmogs to store in realm bank."] = true
+L["Gathered %d transmogs missing from realm bank."] = true
+L["No transmogs missing from realm bank found."] = true
+L["Stored %d transmog duplicates to personal bank (tab %d)."] = true
+L["No transmog duplicates found in bags."] = true
+L["Move operation already in progress."] = true
+L["Bagnon_Forever not loaded. Cannot cross-reference banks."] = true
+L["No cached realm bank data. Visit realm bank first."] = true
+L["Bags full - %d items not gathered."] = true
+L["Bank tab full - %d items not stored."] = true
 
 -- Buy Command
 L["Item not found in transmog list."] = true
