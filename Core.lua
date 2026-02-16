@@ -35,6 +35,11 @@ local savedDBDefaults = {
             itemHistory = {},   -- { ["Item Name"] = { price = copper, tmogType = "weapon", tmogSubType = "sword" } }
             offerList = {},     -- {itemName, itemLink, buyer, offeredPrice, setPrice, isUnderSetPrice, status, timestamp}
         },
+        tooltip = {
+            enabled = true,             -- Enable/disable ChatSeller tooltip info
+            showCategory = true,        -- Show item category (type > subtype) in tooltip
+            showPrice = true,           -- Show shop price in tooltip
+        },
         loyalty = {
             enabled = true,             -- Enable/disable loyalty points system
             pointsPerGold = 10,         -- Points awarded per gold spent
@@ -117,7 +122,82 @@ function TSM:RegisterModule()
         },
     }
 
+    TSM.tooltipOptions = { callback = "Options:LoadTooltipOptions" }
+
     TSMAPI:NewModule(TSM)
+end
+
+-- ===================================================================================== --
+-- Tooltip Integration
+-- ===================================================================================== --
+
+-- Cache for transmog name lookups (rebuilt when itemList changes)
+local tmogNameCache = nil
+local tmogNameCacheSize = 0
+
+local function GetTmogNameCache()
+    local itemList = TSM.db.profile.transmogs.itemList
+    if tmogNameCache and tmogNameCacheSize == #itemList then
+        return tmogNameCache
+    end
+    -- Rebuild cache
+    tmogNameCache = {}
+    for _, item in ipairs(itemList) do
+        if item.name then
+            tmogNameCache[strlower(item.name)] = item
+        end
+    end
+    tmogNameCacheSize = #itemList
+    return tmogNameCache
+end
+
+-- Capitalize first letter of a string
+local function Capitalize(str)
+    if not str or str == "" then return str end
+    return strupper(strsub(str, 1, 1)) .. strsub(str, 2)
+end
+
+function TSM:GetTooltip(itemString, quantity)
+    if not TSM.db.profile.tooltip.enabled then return end
+    if not itemString or not strfind(itemString, "item:") then return end
+
+    -- Get item name from itemString
+    local name = GetItemInfo(itemString)
+    if not name then return end
+
+    -- Look up in transmog list
+    local cache = GetTmogNameCache()
+    local item = cache[strlower(name)]
+    if not item then return end
+
+    local text = {}
+
+    -- Show category (type > subtype)
+    if TSM.db.profile.tooltip.showCategory then
+        local category = Capitalize(item.tmogType or "misc")
+        if item.tmogSubType and item.tmogSubType ~= "none" and item.tmogSubType ~= "" then
+            category = category .. " > " .. Capitalize(item.tmogSubType)
+        end
+        tinsert(text, { left = "  ChatSeller:", right = category })
+    end
+
+    -- Show shop price
+    if TSM.db.profile.tooltip.showPrice and item.price and item.price > 0 then
+        tinsert(text, { left = "  " .. L["Shop Price:"], right = TSMAPI:FormatTextMoneyIcon(item.price, "|cffffffff", true) })
+    end
+
+    -- Add yellow heading (same pattern as AuctionDB/Accounting)
+    if #text > 0 then
+        tinsert(text, 1, "|cffffff00TSM ChatSeller:")
+    end
+
+    return text
+end
+
+-- Invalidate the tooltip cache (call when transmog list changes)
+function TSM:InvalidateTooltipCache()
+    tmogNameCache = nil
+    tmogNameCacheSize = 0
 end
 
 -- ===================================================================================== --

@@ -302,6 +302,9 @@ function Options:LoadTransmogsTab(container)
     if not Options.tmogCurrentPage then
         Options.tmogCurrentPage = 1
     end
+    if not Options.tmogSearchText then
+        Options.tmogSearchText = ""
+    end
 
     -- Get filtered items and validate current page
     local filteredItems = Options:GetFilteredTransmogItems()
@@ -524,6 +527,17 @@ function Options:LoadTransmogsTab(container)
                         Options:RefreshTransmogsTab()
                     end,
                 },
+                {
+                    type = "EditBox",
+                    label = L["Search"],
+                    relativeWidth = 0.35,
+                    value = Options.tmogSearchText,
+                    callback = function(widget, _, value)
+                        Options.tmogSearchText = value or ""
+                        Options.tmogCurrentPage = 1
+                        Options:RefreshTransmogsTab()
+                    end,
+                },
                 -- Item List Section
                 {
                     type = "InlineGroup",
@@ -571,6 +585,12 @@ function Options:GetFilteredTransmogItems()
         -- Apply hand filter
         if show and filterHand ~= "all" then
             show = (item.tmogHand == filterHand)
+        end
+        -- Apply search filter
+        if show and Options.tmogSearchText and Options.tmogSearchText ~= "" then
+            local searchLower = strlower(Options.tmogSearchText)
+            local itemName = strlower(item.name or "")
+            show = strfind(itemName, searchLower, 1, true) ~= nil
         end
         if show then
             tinsert(filtered, { index = i, item = item })

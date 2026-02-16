@@ -214,3 +214,15 @@ L["You have earned a total of %d points."] = true
 L["Top %d - %s with %d points."] = true
 L["You are ranked %s! Send \"%srank\" to see the Top 3 buyers."] = true
 L["Send \"%srank\" to see the Top 3 buyers."] = true
+
+-- Tooltip
+L["Shop Price:"] = true
+L["Enable ChatSeller tooltip info"] = true
+L["If checked, ChatSeller data will be displayed in item tooltips."] = true
+L["Show item category (type > subtype)"] = true
+L["Display the transmog category in the tooltip (e.g. Weapon > Sword)."] = true
+L["Show shop price"] = true
+L["Display the ChatSeller shop price in the tooltip."] = true
+
+-- Search
+L["Search"] = true

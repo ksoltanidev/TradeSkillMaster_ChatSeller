@@ -139,3 +139,44 @@ function Options:LoadOptionsTab(container)
 
     TSMAPI:BuildPage(container, page)
 end
+
+-- ===================================================================================== --
+-- Tooltip Options (shown in TSM > Options > Tooltip > ChatSeller tab)
+-- ===================================================================================== --
+
+function Options:LoadTooltipOptions(container)
+    local page = {
+        {
+            type = "SimpleGroup",
+            layout = "Flow",
+            fullHeight = true,
+            children = {
+                {
+                    type = "CheckBox",
+                    label = L["Enable ChatSeller tooltip info"],
+                    relativeWidth = 1,
+                    settingInfo = { TSM.db.profile.tooltip, "enabled" },
+                    tooltip = L["If checked, ChatSeller data will be displayed in item tooltips."],
+                    callback = function(_, _, value)
+                        container:ReloadTab()
+                    end,
+                },
+                {
+                    type = "CheckBox",
+                    label = L["Show item category (type > subtype)"],
+                    disabled = not TSM.db.profile.tooltip.enabled,
+                    settingInfo = { TSM.db.profile.tooltip, "showCategory" },
+                    tooltip = L["Display the transmog category in the tooltip (e.g. Weapon > Sword)."],
+                },
+                {
+                    type = "CheckBox",
+                    label = L["Show shop price"],
+                    disabled = not TSM.db.profile.tooltip.enabled,
+                    settingInfo = { TSM.db.profile.tooltip, "showPrice" },
+                    tooltip = L["Display the ChatSeller shop price in the tooltip."],
+                },
+            },
+        },
+    }
+    TSMAPI:BuildPage(container, page)
+end

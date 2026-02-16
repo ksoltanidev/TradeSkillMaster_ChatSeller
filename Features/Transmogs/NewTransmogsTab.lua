@@ -184,6 +184,7 @@ function Options:LoadNewTransmogsTab(container)
     if not Options.newTmogFilterSubType then Options.newTmogFilterSubType = "all" end
     if not Options.newTmogFilterHand then Options.newTmogFilterHand = "all" end
     if not Options.newTmogCurrentPage then Options.newTmogCurrentPage = 1 end
+    if not Options.newTmogSearchText then Options.newTmogSearchText = "" end
 
     -- Get filtered unpublished items
     local filteredItems = Options:GetFilteredUnpublishedItems()
@@ -251,6 +252,17 @@ function Options:LoadNewTransmogsTab(container)
                         Options:RefreshNewTransmogsTab()
                     end,
                 },
+                {
+                    type = "EditBox",
+                    label = L["Search"],
+                    relativeWidth = 0.35,
+                    value = Options.newTmogSearchText,
+                    callback = function(widget, _, value)
+                        Options.newTmogSearchText = value or ""
+                        Options.newTmogCurrentPage = 1
+                        Options:RefreshNewTransmogsTab()
+                    end,
+                },
                 -- Item List
                 {
                     type = "InlineGroup",
@@ -294,6 +306,12 @@ function Options:GetFilteredUnpublishedItems()
             -- Apply hand filter
             if show and filterHand ~= "all" then
                 show = (item.tmogHand == filterHand)
+            end
+            -- Apply search filter
+            if show and Options.newTmogSearchText and Options.newTmogSearchText ~= "" then
+                local searchLower = strlower(Options.newTmogSearchText)
+                local itemName = strlower(item.name or "")
+                show = strfind(itemName, searchLower, 1, true) ~= nil
             end
             if show then
                 tinsert(filtered, { index = i, item = item })
