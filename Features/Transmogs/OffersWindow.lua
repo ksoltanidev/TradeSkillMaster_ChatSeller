@@ -309,7 +309,7 @@ function OW:CreateSingleRow(parent, index, contentWidth)
         local offerIndex = self:GetParent().offerIndex
         if offerIndex then
             local goldAmount = tonumber(self:GetText())
-            if goldAmount and goldAmount > 0 then
+            if goldAmount and goldAmount >= 0 then
                 local offer = TSM.db.profile.transmogs.offerList[offerIndex]
                 if offer then
                     offer.offeredPrice = goldAmount * 10000

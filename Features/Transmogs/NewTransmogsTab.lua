@@ -28,13 +28,17 @@ end
 -- ===================================================================================== --
 
 local TMOG_TYPE_LIST = {
-    "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars",
+    "weapon", "mount", "pet", "whistle", "demon", "incarnation", "wings", "armor set", "shield", "tabard", "misc", "illusions", "altars",
 }
 
 local TMOG_TYPE_DISPLAY = {
     ["weapon"] = "Weapon",
     ["mount"] = "Mount",
     ["pet"] = "Pet",
+    ["whistle"] = "Whistle",
+    ["demon"] = "Demon",
+    ["incarnation"] = "Incarnation",
+    ["wings"] = "Wings",
     ["armor set"] = "Armor Set",
     ["shield"] = "Shield",
     ["tabard"] = "Tabard",
@@ -45,9 +49,10 @@ local TMOG_TYPE_DISPLAY = {
 
 local TMOG_SUBTYPE_LIST = {
     "none",
-    "sword", "axe", "mace", "dagger", "staff", "polearm", "fist",
+    "sword", "axe", "mace", "dagger", "staff", "polearm", "fist", "glaive",
     "bow", "gun", "crossbow", "wand", "thrown",
     "head", "shoulders", "chest", "wrist", "gloves", "waist", "legs", "feet", "back",
+    "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid",
 }
 
 local TMOG_SUBTYPE_DISPLAY = {
@@ -64,6 +69,7 @@ local TMOG_SUBTYPE_DISPLAY = {
     ["crossbow"] = "Crossbow",
     ["wand"] = "Wand",
     ["thrown"] = "Thrown",
+    ["glaive"] = "Glaive",
     ["head"] = "Head",
     ["shoulders"] = "Shoulders",
     ["chest"] = "Chest",
@@ -73,6 +79,15 @@ local TMOG_SUBTYPE_DISPLAY = {
     ["legs"] = "Legs",
     ["feet"] = "Feet",
     ["back"] = "Back",
+    ["warrior"] = "Warrior",
+    ["paladin"] = "Paladin",
+    ["hunter"] = "Hunter",
+    ["rogue"] = "Rogue",
+    ["priest"] = "Priest",
+    ["shaman"] = "Shaman",
+    ["mage"] = "Mage",
+    ["warlock"] = "Warlock",
+    ["druid"] = "Druid",
 }
 
 -- ===================================================================================== --
@@ -112,12 +127,16 @@ local function GetSubTypeDropdownOrder()
 end
 
 -- Filter dropdown: "all" + each type
-local FILTER_LIST = { "all", "weapon", "mount", "pet", "armor set", "shield", "tabard", "misc", "illusions", "altars", "new" }
+local FILTER_LIST = { "all", "weapon", "mount", "pet", "whistle", "demon", "incarnation", "wings", "armor set", "shield", "tabard", "misc", "illusions", "altars", "new" }
 local FILTER_DISPLAY = {
     ["all"] = L["All"],
     ["weapon"] = "Weapon",
     ["mount"] = "Mount",
     ["pet"] = "Pet",
+    ["whistle"] = "Whistle",
+    ["demon"] = "Demon",
+    ["incarnation"] = "Incarnation",
+    ["wings"] = "Wings",
     ["armor set"] = "Armor Set",
     ["shield"] = "Shield",
     ["tabard"] = "Tabard",

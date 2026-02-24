@@ -32,6 +32,7 @@ local TYPE_ALIASES = {
     whistle = "whistle", whistles = "whistle", sifflet = "whistle", sifflets = "whistle", silbato = "whistle", silbatos = "whistle",
     demon = "demon", demons = "demon", ["démon"] = "demon", ["démons"] = "demon", demonio = "demon", demonios = "demon",
     incarnation = "incarnation", incarnations = "incarnation", incarnacion = "incarnation", incarnaciones = "incarnation",
+    wings = "wings",
 }
 
 -- Weapon subtype aliases -> canonical subtype name (infers tmogType = "weapon")
@@ -48,6 +49,7 @@ local WEAPON_SUBTYPE_ALIASES = {
     crossbow = "crossbow", crossbows = "crossbow", arbalete = "crossbow", ballesta = "crossbow",
     wand = "wand", wands = "wand", baguette = "wand", varita = "wand",
     thrown = "thrown", lance = "thrown", arrojadiza = "thrown",
+    glaive = "glaive", glaives = "glaive",
 }
 
 -- Armor subtype aliases -> canonical subtype name (infers tmogType = "armor set")
@@ -61,6 +63,19 @@ local ARMOR_SUBTYPE_ALIASES = {
     legs = "legs", pants = "legs", jambes = "legs", piernas = "legs",
     feet = "feet", boots = "feet", pieds = "feet", bottes = "feet", pies = "feet", botas = "feet",
     back = "back", cloak = "back", cape = "back", dos = "back", capa = "back",
+}
+
+-- Class subtype aliases -> canonical subtype name (no type inference)
+local CLASS_SUBTYPE_ALIASES = {
+    warrior = "warrior", guerrier = "warrior", guerrero = "warrior",
+    paladin = "paladin",
+    hunter = "hunter", chasseur = "hunter", cazador = "hunter",
+    rogue = "rogue", voleur = "rogue", picaro = "rogue",
+    priest = "priest", pretre = "priest", sacerdote = "priest",
+    shaman = "shaman", chaman = "shaman",
+    mage = "mage",
+    warlock = "warlock", demoniste = "warlock", brujo = "warlock",
+    druid = "druid", druide = "druid", druida = "druid",
 }
 
 -- ===================================================================================== --
@@ -163,6 +178,15 @@ function TSM:ParseTransmogArguments(args)
                 if not filters.tmogType then
                     filters.tmogType = "armor set"
                 end
+                consumed = true
+            end
+        end
+
+        -- Check for class subtype aliases (no type inference)
+        if not consumed then
+            local classSub = CLASS_SUBTYPE_ALIASES[word]
+            if classSub then
+                filters.tmogSubType = classSub
                 consumed = true
             end
         end
@@ -443,9 +467,10 @@ function TSM:SendTransmogHelpMessage(sender)
     local cmdPrefix = (prefix ~= "") and (prefix .. " ") or ""
     SendChatMessage("Welcome to the Transmog Shop! Browse cosmetic items using chat messages.", "WHISPER", nil, sender)
     SendChatMessage("Usage Examples: '" .. cmdPrefix .. "tmog mount', '" .. cmdPrefix .. "tmog weapon sword', '" .. cmdPrefix .. "tmog windfury'", "WHISPER", nil, sender)
-    SendChatMessage("Types: weapon, mount, pet, whistle, demon, incarnation, set, shield, tabard, misc, illusions, altars, free, new", "WHISPER", nil, sender)
-    SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, bow, gun, crossbow, wand, thrown, 1h, 2h", "WHISPER", nil, sender)
+    SendChatMessage("Types: weapon, mount, pet, whistle, demon, incarnation, wings, set, shield, tabard, misc, illusions, altars, free, new", "WHISPER", nil, sender)
+    SendChatMessage("Weapon subtypes: sword, axe, mace, dagger, staff, polearm, glaive, bow, gun, crossbow, wand, thrown, 1h, 2h", "WHISPER", nil, sender)
     SendChatMessage("Armor subtypes: head, shoulders, chest, wrist, gloves, waist, legs, feet, back", "WHISPER", nil, sender)
+    SendChatMessage("Class subtypes: warrior, paladin, hunter, rogue, priest, shaman, mage, warlock, druid", "WHISPER", nil, sender)
     SendChatMessage("Name filter: use quotes for multi-word search, e.g. " .. cmdPrefix .. "tmog \"fire sword\"", "WHISPER", nil, sender)
     SendChatMessage("Example: '" .. cmdPrefix .. "tmog weapon sword' or '" .. cmdPrefix .. "tmog fire'", "WHISPER", nil, sender)
 end

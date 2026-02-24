@@ -28,7 +28,7 @@ end
 
 -- Base types for dropdown
 local TMOG_TYPE_LIST = {
-    "weapon", "mount", "pet", "whistle", "demon", "incarnation", "armor set", "shield", "tabard", "misc", "illusions", "altars",
+    "weapon", "mount", "pet", "whistle", "demon", "incarnation", "wings", "armor set", "shield", "tabard", "misc", "illusions", "altars",
 }
 
 -- Display names for types
@@ -39,6 +39,7 @@ local TMOG_TYPE_DISPLAY = {
     ["whistle"] = "Whistle",
     ["demon"] = "Demon",
     ["incarnation"] = "Incarnation",
+    ["wings"] = "Wings",
     ["armor set"] = "Armor Set",
     ["shield"] = "Shield",
     ["tabard"] = "Tabard",
@@ -51,10 +52,12 @@ local TMOG_TYPE_DISPLAY = {
 local TMOG_SUBTYPE_LIST = {
     "none",
     -- Weapon subtypes
-    "sword", "axe", "mace", "dagger", "staff", "polearm", "fist",
+    "sword", "axe", "mace", "dagger", "staff", "polearm", "fist", "glaive",
     "bow", "gun", "crossbow", "wand", "thrown",
     -- Armor subtypes
     "head", "shoulders", "chest", "wrist", "gloves", "waist", "legs", "feet", "back",
+    -- Class subtypes
+    "warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid",
 }
 
 -- Display names for subtypes
@@ -73,6 +76,7 @@ local TMOG_SUBTYPE_DISPLAY = {
     ["crossbow"] = "Crossbow",
     ["wand"] = "Wand",
     ["thrown"] = "Thrown",
+    ["glaive"] = "Glaive",
     -- Armor
     ["head"] = "Head",
     ["shoulders"] = "Shoulders",
@@ -83,6 +87,16 @@ local TMOG_SUBTYPE_DISPLAY = {
     ["legs"] = "Legs",
     ["feet"] = "Feet",
     ["back"] = "Back",
+    -- Classes
+    ["warrior"] = "Warrior",
+    ["paladin"] = "Paladin",
+    ["hunter"] = "Hunter",
+    ["rogue"] = "Rogue",
+    ["priest"] = "Priest",
+    ["shaman"] = "Shaman",
+    ["mage"] = "Mage",
+    ["warlock"] = "Warlock",
+    ["druid"] = "Druid",
 }
 
 -- ===================================================================================== --
