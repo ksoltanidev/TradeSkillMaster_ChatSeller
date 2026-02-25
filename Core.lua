@@ -237,6 +237,39 @@ function TSM:FormatMoneyForChat(money)
     end
 end
 
+-- Maximum byte length for a whisper message (WoW limit is 255, use 250 for safety)
+local MAX_WHISPER_LENGTH = 250
+local ITEM_SEPARATOR = ", "
+
+-- Send a list of formatted item strings as whisper messages, splitting by byte length.
+-- Fits as many items per message as possible within MAX_WHISPER_LENGTH.
+function TSM:SendItemsAsWhispers(sender, formattedItems)
+    if not formattedItems or #formattedItems == 0 then return end
+
+    local currentMessage = ""
+    local separatorLen = strlen(ITEM_SEPARATOR)
+
+    for i = 1, #formattedItems do
+        local item = formattedItems[i]
+
+        if currentMessage == "" then
+            currentMessage = item
+        else
+            local newLen = strlen(currentMessage) + separatorLen + strlen(item)
+            if newLen <= MAX_WHISPER_LENGTH then
+                currentMessage = currentMessage .. ITEM_SEPARATOR .. item
+            else
+                SendChatMessage(currentMessage, "WHISPER", nil, sender)
+                currentMessage = item
+            end
+        end
+    end
+
+    if currentMessage ~= "" then
+        SendChatMessage(currentMessage, "WHISPER", nil, sender)
+    end
+end
+
 -- Normalize player name to WoW canonical format: first letter uppercase, rest lowercase
 function TSM:NormalizeName(name)
     if not name or name == "" then return name end

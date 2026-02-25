@@ -421,24 +421,18 @@ function TSM:FormatTransmogItem(item)
     return itemText .. priceStr
 end
 
--- Send transmog item responses (3 items per message, paginated)
+-- Send transmog item responses (paginated, split by message length)
 function TSM:SendTransmogResponses(sender, items, page)
     page = page or 1
     local startIdx = (page - 1) * ITEMS_PER_PAGE + 1
     local endIdx = min(startIdx + ITEMS_PER_PAGE - 1, #items)
 
-    -- Send 3 items per message
-    for i = startIdx, endIdx, 3 do
-        local parts = {}
-        for j = 0, 2 do
-            local idx = i + j
-            if idx <= endIdx then
-                tinsert(parts, TSM:FormatTransmogItem(items[idx]))
-            end
-        end
-        local response = table.concat(parts, ", ")
-        SendChatMessage(response, "WHISPER", nil, sender)
+    -- Collect formatted items for this page, send with length-aware splitting
+    local formattedItems = {}
+    for i = startIdx, endIdx do
+        tinsert(formattedItems, TSM:FormatTransmogItem(items[i]))
     end
+    TSM:SendItemsAsWhispers(sender, formattedItems)
 
     -- "More results" message if there are remaining items
     local remaining = #items - endIdx

@@ -74,38 +74,38 @@ local function BuildFreeTmogNameSet()
     return nameSet
 end
 
--- Scan all tabs of the currently open guild bank, return { [name] = { {tab,slot}, ... } }
+-- Scan the current tab of the open guild bank, return { [name] = { {tab,slot}, ... } }
 -- Only includes items in the provided nameSet (or all items if nameSet is nil)
-local function ScanOpenBankSlots(nameSet)
+local function ScanCurrentTabSlots(nameSet)
+    local currentTab = GetCurrentGuildBankTab()
+    if not currentTab or currentTab == 0 then return {} end
+
     local result = {}
-    local numTabs = GetNumGuildBankTabs()
-    for tab = 1, numTabs do
-        for slot = 1, SLOTS_PER_TAB do
-            local link = GetGuildBankItemLink(tab, slot)
-            if link then
-                local name = GetItemInfo(link)
-                if name and (not nameSet or nameSet[name]) then
-                    if not result[name] then result[name] = {} end
-                    tinsert(result[name], { tab = tab, slot = slot })
-                end
+    for slot = 1, SLOTS_PER_TAB do
+        local link = GetGuildBankItemLink(currentTab, slot)
+        if link then
+            local name = GetItemInfo(link)
+            if name and (not nameSet or nameSet[name]) then
+                if not result[name] then result[name] = {} end
+                tinsert(result[name], { tab = currentTab, slot = slot })
             end
         end
     end
     return result
 end
 
--- Scan all tabs of the currently open guild bank, return { [name] = true }
-local function ScanOpenBankNames(nameSet)
+-- Scan the current tab of the open guild bank, return { [name] = true }
+local function ScanCurrentTabNames(nameSet)
+    local currentTab = GetCurrentGuildBankTab()
+    if not currentTab or currentTab == 0 then return {} end
+
     local names = {}
-    local numTabs = GetNumGuildBankTabs()
-    for tab = 1, numTabs do
-        for slot = 1, SLOTS_PER_TAB do
-            local link = GetGuildBankItemLink(tab, slot)
-            if link then
-                local name = GetItemInfo(link)
-                if name and (not nameSet or nameSet[name]) then
-                    names[name] = true
-                end
+    for slot = 1, SLOTS_PER_TAB do
+        local link = GetGuildBankItemLink(currentTab, slot)
+        if link then
+            local name = GetItemInfo(link)
+            if name and (not nameSet or nameSet[name]) then
+                names[name] = true
             end
         end
     end
@@ -248,7 +248,7 @@ local function OnGatherFree()
         return
     end
 
-    local bankSlots = ScanOpenBankSlots(freeNames)
+    local bankSlots = ScanCurrentTabSlots(freeNames)
     local moves = {}
     local freeBagSlots = CountFreeBagSlots()
 
@@ -283,7 +283,7 @@ end
 -- Gather Dupes: move duplicate transmogs from realm bank to bags (keep 1 of each)
 local function OnGatherDupes()
     local tmogNames = BuildTmogNameSet()
-    local bankSlots = ScanOpenBankSlots(tmogNames)
+    local bankSlots = ScanCurrentTabSlots(tmogNames)
     local moves = {}
     local freeBagSlots = CountFreeBagSlots()
 
@@ -327,7 +327,7 @@ local function OnPutMissing()
     end
 
     local tmogNames = BuildTmogNameSet()
-    local realmBankNames = ScanOpenBankNames(tmogNames)
+    local realmBankNames = ScanCurrentTabNames(tmogNames)
     local bagItems = ScanBagsForTmogItems(tmogNames)
     local emptySlots = FindEmptySlotsInCurrentTab()
 
@@ -378,7 +378,7 @@ local function OnGatherMissing()
     end
 
     local tmogNames = BuildTmogNameSet()
-    local bankSlots = ScanOpenBankSlots(tmogNames)
+    local bankSlots = ScanCurrentTabSlots(tmogNames)
     local moves = {}
     local freeBagSlots = CountFreeBagSlots()
     local gathered = {}  -- track names to only take ONE per name

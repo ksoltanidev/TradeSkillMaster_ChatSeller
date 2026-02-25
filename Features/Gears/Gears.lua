@@ -389,23 +389,17 @@ end
 -- Response Functions
 -- ===================================================================================== --
 
--- Send gear item responses (2 items per message, max 10 items)
+-- Send gear item responses (split by message length, max 10 items)
 function TSM:SendGearResponses(sender, items, filters)
     -- Limit to 10 items
     local maxItems = min(#items, 10)
 
-    -- Send 2 items per message (up to 5 messages)
-    for i = 1, maxItems, 2 do
-        local item1 = items[i]
-        local item2 = items[i + 1]
-
-        local response = TSM:FormatGearItem(item1)
-        if item2 and i + 1 <= maxItems then
-            response = response .. ", " .. TSM:FormatGearItem(item2)
-        end
-
-        SendChatMessage(response, "WHISPER", nil, sender)
+    -- Collect formatted items, send with length-aware splitting
+    local formattedItems = {}
+    for i = 1, maxItems do
+        tinsert(formattedItems, TSM:FormatGearItem(items[i]))
     end
+    TSM:SendItemsAsWhispers(sender, formattedItems)
 
     -- Check if no advanced filters were used (no stats, no levels, no ilvl)
     local hasAdvancedFilters = filters and (
