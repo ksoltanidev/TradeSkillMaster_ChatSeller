@@ -409,12 +409,13 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
                 local goldAmount = tonumber(value)
                 local newPrice = goldAmount and goldAmount > 0 and (goldAmount * 10000) or nil
                 item.price = newPrice
-                -- Update history
-                if item.name then
-                    if not TSM.db.profile.transmogs.itemHistory[item.name] then
-                        TSM.db.profile.transmogs.itemHistory[item.name] = {}
+                -- Update history by itemID
+                local hkey = item.link and item.link:match("item:(%d+)")
+                if hkey then
+                    if not TSM.db.profile.transmogs.itemHistory[hkey] then
+                        TSM.db.profile.transmogs.itemHistory[hkey] = {}
                     end
-                    TSM.db.profile.transmogs.itemHistory[item.name].price = newPrice
+                    TSM.db.profile.transmogs.itemHistory[hkey].price = newPrice
                 end
             end,
         })
@@ -427,12 +428,13 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
             value = currentType,
             callback = function(widget, _, value)
                 item.tmogType = value
-                -- Update history
-                if item.name then
-                    if not TSM.db.profile.transmogs.itemHistory[item.name] then
-                        TSM.db.profile.transmogs.itemHistory[item.name] = {}
+                -- Update history by itemID
+                local hkey = item.link and item.link:match("item:(%d+)")
+                if hkey then
+                    if not TSM.db.profile.transmogs.itemHistory[hkey] then
+                        TSM.db.profile.transmogs.itemHistory[hkey] = {}
                     end
-                    TSM.db.profile.transmogs.itemHistory[item.name].tmogType = value
+                    TSM.db.profile.transmogs.itemHistory[hkey].tmogType = value
                 end
             end,
         })
@@ -446,12 +448,13 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
             callback = function(widget, _, value)
                 local subType = value ~= "none" and value or nil
                 item.tmogSubType = subType
-                -- Update history
-                if item.name then
-                    if not TSM.db.profile.transmogs.itemHistory[item.name] then
-                        TSM.db.profile.transmogs.itemHistory[item.name] = {}
+                -- Update history by itemID
+                local hkey = item.link and item.link:match("item:(%d+)")
+                if hkey then
+                    if not TSM.db.profile.transmogs.itemHistory[hkey] then
+                        TSM.db.profile.transmogs.itemHistory[hkey] = {}
                     end
-                    TSM.db.profile.transmogs.itemHistory[item.name].tmogSubType = subType
+                    TSM.db.profile.transmogs.itemHistory[hkey].tmogSubType = subType
                 end
             end,
         })
@@ -461,16 +464,17 @@ function Options:GetNewTransmogListWidgets(filteredItems, totalPages)
             relativeWidth = 0.13,
             callback = function()
                 item.published = true
-                -- Save to history
-                if item.name then
+                -- Save to history by itemID
+                local hkey = item.link and item.link:match("item:(%d+)")
+                if hkey then
                     local history = TSM.db.profile.transmogs.itemHistory
-                    if not history[item.name] then
-                        history[item.name] = {}
+                    if not history[hkey] then
+                        history[hkey] = {}
                     end
-                    history[item.name].price = item.price
-                    history[item.name].tmogType = item.tmogType
-                    history[item.name].tmogSubType = item.tmogSubType
-                    history[item.name].tmogHand = item.tmogHand
+                    history[hkey].price = item.price
+                    history[hkey].tmogType = item.tmogType
+                    history[hkey].tmogSubType = item.tmogSubType
+                    history[hkey].tmogHand = item.tmogHand
                 end
                 Options:RefreshNewTransmogsTab()
             end,

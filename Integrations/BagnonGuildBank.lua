@@ -52,31 +52,40 @@ end
 -- Helper Functions
 -- ===================================================================================== --
 
--- Build lookup of all transmog names -> item data
-local function BuildTmogNameSet()
-    local nameSet = {}
-    for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
-        if item.name then
-            nameSet[item.name] = item
-        end
-    end
-    return nameSet
+-- Extract itemID string from an item link
+local function GetItemIdFromLink(link)
+    return link and link:match("item:(%d+)")
 end
 
--- Build lookup of free transmog names (price == 0 or nil)
-local function BuildFreeTmogNameSet()
-    local nameSet = {}
+-- Build lookup of all transmog itemIDs -> item data
+local function BuildTmogIdSet()
+    local idSet = {}
     for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
-        if item.name and (not item.price or item.price == 0) then
-            nameSet[item.name] = true
+        local itemId = GetItemIdFromLink(item.link)
+        if itemId then
+            idSet[itemId] = item
         end
     end
-    return nameSet
+    return idSet
 end
 
--- Scan the current tab of the open guild bank, return { [name] = { {tab,slot}, ... } }
--- Only includes items in the provided nameSet (or all items if nameSet is nil)
-local function ScanCurrentTabSlots(nameSet)
+-- Build lookup of free transmog itemIDs (price == 0 or nil)
+local function BuildFreeTmogIdSet()
+    local idSet = {}
+    for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
+        if item.link and (not item.price or item.price == 0) then
+            local itemId = GetItemIdFromLink(item.link)
+            if itemId then
+                idSet[itemId] = true
+            end
+        end
+    end
+    return idSet
+end
+
+-- Scan the current tab of the open guild bank, return { [itemId] = { {tab,slot}, ... } }
+-- Only includes items whose itemID is in the provided idSet (or all items if idSet is nil)
+local function ScanCurrentTabSlots(idSet)
     local currentTab = GetCurrentGuildBankTab()
     if not currentTab or currentTab == 0 then return {} end
 
@@ -84,38 +93,58 @@ local function ScanCurrentTabSlots(nameSet)
     for slot = 1, SLOTS_PER_TAB do
         local link = GetGuildBankItemLink(currentTab, slot)
         if link then
-            local name = GetItemInfo(link)
-            if name and (not nameSet or nameSet[name]) then
-                if not result[name] then result[name] = {} end
-                tinsert(result[name], { tab = currentTab, slot = slot })
+            local itemId = GetItemIdFromLink(link)
+            if itemId and (not idSet or idSet[itemId]) then
+                if not result[itemId] then result[itemId] = {} end
+                tinsert(result[itemId], { tab = currentTab, slot = slot })
             end
         end
     end
     return result
 end
 
--- Scan the current tab of the open guild bank, return { [name] = true }
-local function ScanCurrentTabNames(nameSet)
-    local currentTab = GetCurrentGuildBankTab()
-    if not currentTab or currentTab == 0 then return {} end
-
-    local names = {}
-    for slot = 1, SLOTS_PER_TAB do
-        local link = GetGuildBankItemLink(currentTab, slot)
-        if link then
-            local name = GetItemInfo(link)
-            if name and (not nameSet or nameSet[name]) then
-                names[name] = true
+-- Scan ALL tabs of the open bank, return { [itemId] = true }
+-- Uses live API which works for all tabs (BagnonForever queries all tabs on bank open)
+local function ScanAllBankTabIds(idSet)
+    local ids = {}
+    local numTabs = GetNumGuildBankTabs()
+    for tab = 1, numTabs do
+        for slot = 1, SLOTS_PER_TAB do
+            local link = GetGuildBankItemLink(tab, slot)
+            if link then
+                local itemId = GetItemIdFromLink(link)
+                if itemId and (not idSet or idSet[itemId]) then
+                    ids[itemId] = true
+                end
             end
         end
     end
-    return names
+    return ids
 end
 
--- Scan cached realm bank via BagnonForever, return { [name] = true }
-local function ScanCachedRealmBankNames()
-    local names = {}
-    if not BagnonDB then return names end
+-- Scan ALL tabs of the open bank, return { [itemId] = count }
+-- Needed by Gather Dupes to know total copies across all tabs
+local function ScanAllBankTabCounts(idSet)
+    local counts = {}
+    local numTabs = GetNumGuildBankTabs()
+    for tab = 1, numTabs do
+        for slot = 1, SLOTS_PER_TAB do
+            local link = GetGuildBankItemLink(tab, slot)
+            if link then
+                local itemId = GetItemIdFromLink(link)
+                if itemId and (not idSet or idSet[itemId]) then
+                    counts[itemId] = (counts[itemId] or 0) + 1
+                end
+            end
+        end
+    end
+    return counts
+end
+
+-- Scan cached realm bank via BagnonForever, return { [itemId] = true }
+local function ScanCachedRealmBankIds()
+    local ids = {}
+    if not BagnonDB then return ids end
 
     local ASC_REALM_BANK_OFFSET = ASC_REALM_BANK_OFFSET or 2000
     local cachePlayer = GetRealmName()
@@ -127,29 +156,29 @@ local function ScanCachedRealmBankNames()
             for slot = 1, size do
                 local hyperLink = BagnonDB:GetItemData(bag, slot, cachePlayer)
                 if hyperLink then
-                    local name = GetItemInfo(hyperLink)
-                    if name then
-                        names[name] = true
+                    local itemId = GetItemIdFromLink(hyperLink)
+                    if itemId then
+                        ids[itemId] = true
                     end
                 end
             end
         end
     end
-    return names
+    return ids
 end
 
--- Scan player bags for transmog items in nameSet, return { [name] = { {bag,slot}, ... } }
-local function ScanBagsForTmogItems(nameSet)
+-- Scan player bags for transmog items in idSet, return { [itemId] = { {bag,slot}, ... } }
+local function ScanBagsForTmogItems(idSet)
     local found = {}
     for bag = 0, NUM_BAG_SLOTS do
         local numSlots = GetContainerNumSlots(bag)
         for slot = 1, numSlots do
             local link = GetContainerItemLink(bag, slot)
             if link then
-                local name = GetItemInfo(link)
-                if name and nameSet[name] then
-                    if not found[name] then found[name] = {} end
-                    tinsert(found[name], { bag = bag, slot = slot })
+                local itemId = GetItemIdFromLink(link)
+                if itemId and idSet[itemId] then
+                    if not found[itemId] then found[itemId] = {} end
+                    tinsert(found[itemId], { bag = bag, slot = slot })
                 end
             end
         end
@@ -242,17 +271,17 @@ end
 
 -- Gather Free: move all free transmogs from bank to bags
 local function OnGatherFree()
-    local freeNames = BuildFreeTmogNameSet()
-    if not next(freeNames) then
+    local freeIds = BuildFreeTmogIdSet()
+    if not next(freeIds) then
         TSM:Print(L["No free transmogs found in bank."])
         return
     end
 
-    local bankSlots = ScanCurrentTabSlots(freeNames)
+    local bankSlots = ScanCurrentTabSlots(freeIds)
     local moves = {}
     local freeBagSlots = CountFreeBagSlots()
 
-    for name, slots in pairs(bankSlots) do
+    for itemId, slots in pairs(bankSlots) do
         for _, info in ipairs(slots) do
             if #moves >= freeBagSlots then break end
             tinsert(moves, { moveType = "bankToBags", tab = info.tab, slot = info.slot })
@@ -280,19 +309,31 @@ local function OnGatherFree()
     end)
 end
 
--- Gather Dupes: move duplicate transmogs from realm bank to bags (keep 1 of each)
+-- Gather Dupes: move duplicate transmogs from realm bank to bags (keep 1 of each across ALL tabs)
 local function OnGatherDupes()
-    local tmogNames = BuildTmogNameSet()
-    local bankSlots = ScanCurrentTabSlots(tmogNames)
+    local tmogIds = BuildTmogIdSet()
+    local allBankCounts = ScanAllBankTabCounts(tmogIds)    -- total copies across ALL tabs
+    local currentTabSlots = ScanCurrentTabSlots(tmogIds)   -- slots on current tab only
     local moves = {}
     local freeBagSlots = CountFreeBagSlots()
 
-    for name, slots in pairs(bankSlots) do
-        if #slots > 1 then
-            -- Keep first, gather the rest
-            for i = 2, #slots do
+    for itemId, slots in pairs(currentTabSlots) do
+        local totalCount = allBankCounts[itemId] or 0
+        if totalCount > 1 then
+            local currentTabCount = #slots
+            local otherTabCount = totalCount - currentTabCount
+            -- How many to gather from this tab
+            local toGather
+            if otherTabCount > 0 then
+                -- Item exists on other tabs, gather ALL from current tab
+                toGather = currentTabCount
+            else
+                -- Item only on this tab, keep 1
+                toGather = currentTabCount - 1
+            end
+            for i = 1, toGather do
                 if #moves >= freeBagSlots then break end
-                tinsert(moves, { moveType = "bankToBags", tab = slots[i].tab, slot = slots[i].slot })
+                tinsert(moves, { moveType = "bankToBags", tab = slots[currentTabCount - i + 1].tab, slot = slots[currentTabCount - i + 1].slot })
             end
         end
         if #moves >= freeBagSlots then break end
@@ -303,18 +344,9 @@ local function OnGatherDupes()
         return
     end
 
-    local totalDupes = 0
-    for _, slots in pairs(bankSlots) do
-        if #slots > 1 then totalDupes = totalDupes + #slots - 1 end
-    end
-    local skipped = totalDupes - #moves
     local moveCount = #moves
-
     StartMoveQueue(moves, function()
         TSM:Print(format(L["Gathered %d duplicate transmogs from realm bank."], moveCount))
-        if skipped > 0 then
-            TSM:Print(format(L["Bags full - %d items not gathered."], skipped))
-        end
     end)
 end
 
@@ -326,17 +358,17 @@ local function OnPutMissing()
         return
     end
 
-    local tmogNames = BuildTmogNameSet()
-    local realmBankNames = ScanCurrentTabNames(tmogNames)
-    local bagItems = ScanBagsForTmogItems(tmogNames)
+    local tmogIds = BuildTmogIdSet()
+    local allBankIds = ScanAllBankTabIds(tmogIds)  -- check ALL tabs, not just current
+    local bagItems = ScanBagsForTmogItems(tmogIds)
     local emptySlots = FindEmptySlotsInCurrentTab()
 
     local moves = {}
     local emptyIdx = 1
 
-    for name, bagSlots in pairs(bagItems) do
-        if not realmBankNames[name] then
-            -- This item is missing from realm bank, deposit ONE
+    for itemId, bagSlots in pairs(bagItems) do
+        if not allBankIds[itemId] then
+            -- This item is missing from ALL bank tabs, deposit ONE
             if emptyIdx <= #emptySlots then
                 local bagInfo = bagSlots[1]
                 local target = emptySlots[emptyIdx]
@@ -371,23 +403,23 @@ local function OnGatherMissing()
         return
     end
 
-    local realmBankNames = ScanCachedRealmBankNames()
-    if not next(realmBankNames) then
+    local realmBankIds = ScanCachedRealmBankIds()
+    if not next(realmBankIds) then
         TSM:Print(L["No cached realm bank data. Visit realm bank first."])
         return
     end
 
-    local tmogNames = BuildTmogNameSet()
-    local bankSlots = ScanCurrentTabSlots(tmogNames)
+    local tmogIds = BuildTmogIdSet()
+    local bankSlots = ScanCurrentTabSlots(tmogIds)
     local moves = {}
     local freeBagSlots = CountFreeBagSlots()
-    local gathered = {}  -- track names to only take ONE per name
+    local gathered = {}  -- track itemIDs to only take ONE per item
 
-    for name, slots in pairs(bankSlots) do
-        if not realmBankNames[name] and not gathered[name] then
+    for itemId, slots in pairs(bankSlots) do
+        if not realmBankIds[itemId] and not gathered[itemId] then
             if #moves >= freeBagSlots then break end
             tinsert(moves, { moveType = "bankToBags", tab = slots[1].tab, slot = slots[1].slot })
-            gathered[name] = true
+            gathered[itemId] = true
         end
     end
 
@@ -415,21 +447,21 @@ local function OnPutDupes()
         return
     end
 
-    local realmBankNames = ScanCachedRealmBankNames()
-    if not next(realmBankNames) then
+    local realmBankIds = ScanCachedRealmBankIds()
+    if not next(realmBankIds) then
         TSM:Print(L["No cached realm bank data. Visit realm bank first."])
         return
     end
 
-    local tmogNames = BuildTmogNameSet()
-    local bagItems = ScanBagsForTmogItems(tmogNames)
+    local tmogIds = BuildTmogIdSet()
+    local bagItems = ScanBagsForTmogItems(tmogIds)
     local emptySlots = FindEmptySlotsInCurrentTab()
 
     local moves = {}
     local emptyIdx = 1
 
-    for name, bagSlots in pairs(bagItems) do
-        if realmBankNames[name] then
+    for itemId, bagSlots in pairs(bagItems) do
+        if realmBankIds[itemId] then
             -- This item is already in realm bank, store all copies in personal bank
             for _, bagInfo in ipairs(bagSlots) do
                 if emptyIdx <= #emptySlots then
@@ -460,8 +492,8 @@ local function OnPutDupes()
         if tabFull then
             -- Count how many we couldn't store
             local totalWanted = 0
-            for name, bagSlots in pairs(bagItems) do
-                if realmBankNames[name] then
+            for itemId, bagSlots in pairs(bagItems) do
+                if realmBankIds[itemId] then
                     totalWanted = totalWanted + #bagSlots
                 end
             end

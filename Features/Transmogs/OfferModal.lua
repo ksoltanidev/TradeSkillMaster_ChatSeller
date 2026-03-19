@@ -177,14 +177,27 @@ function OW:AddManualOffer()
     end
 
     -- Find set price from transmog list (if item exists there)
+    -- Try matching by itemID first, fall back to name
     local setPrice = nil
-    for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
-        if item.name == itemName then
-            setPrice = item.price
-            if not itemLink then
-                itemLink = item.link
+    local searchId = itemLink and itemLink:match("item:(%d+)")
+    if searchId then
+        for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
+            local existingId = item.link and item.link:match("item:(%d+)")
+            if existingId == searchId then
+                setPrice = item.price
+                break
             end
-            break
+        end
+    end
+    if not setPrice then
+        for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
+            if item.name == itemName then
+                setPrice = item.price
+                if not itemLink then
+                    itemLink = item.link
+                end
+                break
+            end
         end
     end
 

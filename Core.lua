@@ -32,7 +32,7 @@ local savedDBDefaults = {
             enabled = true,     -- Enable/disable transmog lookup feature
             autoAddFriend = false, -- Auto add friend when someone uses tmog command
             itemList = {},      -- {link, price, name, tmogType, tmogSubType, source}
-            itemHistory = {},   -- { ["Item Name"] = { price = copper, tmogType = "weapon", tmogSubType = "sword" } }
+            itemHistory = {},   -- { ["itemID"] = { price = copper, tmogType = "weapon", tmogSubType = "sword" } }
             offerList = {},     -- {itemName, itemLink, buyer, offeredPrice, setPrice, isUnderSetPrice, status, timestamp}
         },
         tooltip = {
@@ -373,12 +373,16 @@ function TSM:SyncFromAuctionsTab(items)
 
         -- Skip if item not cached or not equippable gear
         if name and equipLoc and equipLoc ~= "" and GD.VALID_EQUIP_LOCS[equipLoc] then
-            -- Check for duplicates (by name, excluding AuctionsTab source items we just removed)
+            -- Check for duplicates (by itemID, excluding AuctionsTab source items we just removed)
             local isDuplicate = false
-            for _, existing in ipairs(gearList) do
-                if existing.name == name then
-                    isDuplicate = true
-                    break
+            local newGearId = itemLink and itemLink:match("item:(%d+)")
+            if newGearId then
+                for _, existing in ipairs(gearList) do
+                    local existingId = existing.link and existing.link:match("item:(%d+)")
+                    if existingId == newGearId then
+                        isDuplicate = true
+                        break
+                    end
                 end
             end
 
@@ -425,11 +429,12 @@ function TSM:SyncFromGuildBank(tab)
     local tmogList = TSM.db.profile.transmogs.itemList
     local history = TSM.db.profile.transmogs.itemHistory
 
-    -- Build name lookup for O(1) duplicate checking
-    local existingNames = {}
+    -- Build itemID lookup for O(1) duplicate checking
+    local existingIds = {}
     for _, item in ipairs(tmogList) do
-        if item.name then
-            existingNames[item.name] = true
+        if item.link then
+            local id = item.link:match("item:(%d+)")
+            if id then existingIds[id] = true end
         end
     end
 
@@ -438,9 +443,10 @@ function TSM:SyncFromGuildBank(tab)
         local itemLink = GetGuildBankItemLink(tab, slot)
         if itemLink then
             local name, _, _, _, _, _, itemSubClass, _, equipLoc = GetItemInfo(itemLink)
-            if name and not existingNames[name] then
+            local itemId = itemLink:match("item:(%d+)")
+            if name and itemId and not existingIds[itemId] then
                 local tmogType, tmogSubType, tmogHand, price
-                local historyEntry = history and history[name]
+                local historyEntry = history and history[itemId]
 
                 if historyEntry then
                     tmogType = historyEntry.tmogType
@@ -465,7 +471,7 @@ function TSM:SyncFromGuildBank(tab)
                     published = false,
                     availableSince = time(),
                 })
-                existingNames[name] = true
+                existingIds[itemId] = true
                 added = added + 1
             else
                 if itemLink then

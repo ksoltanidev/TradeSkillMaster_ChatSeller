@@ -397,7 +397,8 @@ function Options:LoadTransmogsTab(container)
                                     local name, itemLink, _, _, _, _, itemSubClass, _, equipLoc = GetItemInfo(value)
                                     if name then
                                         local history = TSM.db.profile.transmogs.itemHistory
-                                        local historyEntry = history and history[name]
+                                        local inputItemId = itemLink and itemLink:match("item:(%d+)")
+                                        local historyEntry = history and inputItemId and history[inputItemId]
 
                                         if historyEntry then
                                             -- History found: use saved type/subtype/price/hand
@@ -680,8 +681,9 @@ function Options:GetTransmogListWidgets(filteredItems, totalPages)
                 local newPrice = goldAmount and goldAmount > 0 and (goldAmount * 10000) or nil
                 item.price = newPrice
                 -- Update history
-                if TSM.db.profile.transmogs.itemHistory[item.name] then
-                    TSM.db.profile.transmogs.itemHistory[item.name].price = newPrice
+                local hkey = item.link and item.link:match("item:(%d+)")
+                if hkey and TSM.db.profile.transmogs.itemHistory[hkey] then
+                    TSM.db.profile.transmogs.itemHistory[hkey].price = newPrice
                 end
             end,
         })
@@ -695,8 +697,9 @@ function Options:GetTransmogListWidgets(filteredItems, totalPages)
             callback = function(widget, _, value)
                 item.tmogType = value
                 -- Update history
-                if TSM.db.profile.transmogs.itemHistory[item.name] then
-                    TSM.db.profile.transmogs.itemHistory[item.name].tmogType = value
+                local hkey = item.link and item.link:match("item:(%d+)")
+                if hkey and TSM.db.profile.transmogs.itemHistory[hkey] then
+                    TSM.db.profile.transmogs.itemHistory[hkey].tmogType = value
                 end
             end,
         })
@@ -711,8 +714,9 @@ function Options:GetTransmogListWidgets(filteredItems, totalPages)
                 local subType = value ~= "none" and value or nil
                 item.tmogSubType = subType
                 -- Update history
-                if TSM.db.profile.transmogs.itemHistory[item.name] then
-                    TSM.db.profile.transmogs.itemHistory[item.name].tmogSubType = subType
+                local hkey = item.link and item.link:match("item:(%d+)")
+                if hkey and TSM.db.profile.transmogs.itemHistory[hkey] then
+                    TSM.db.profile.transmogs.itemHistory[hkey].tmogSubType = subType
                 end
             end,
         })
@@ -815,8 +819,9 @@ function Options:BackfillTmogHand()
                 if hand then
                     item.tmogHand = hand
                     -- Also update history
-                    if item.name and history[item.name] then
-                        history[item.name].tmogHand = hand
+                    local hkey = item.link and item.link:match("item:(%d+)")
+                    if hkey and history[hkey] then
+                        history[hkey].tmogHand = hand
                     end
                     updated = updated + 1
                 end
@@ -877,12 +882,16 @@ function Options:AddTransmogItemFromInput()
         tmogHand = detectedHand
     end
 
-    -- Check for duplicates - update existing item instead of rejecting
+    -- Check for duplicates by itemID - update existing item instead of rejecting
     local existingIndex = nil
-    for i, existing in ipairs(TSM.db.profile.transmogs.itemList) do
-        if existing.name == name then
-            existingIndex = i
-            break
+    local newItemId = itemLink and itemLink:match("item:(%d+)")
+    if newItemId then
+        for i, existing in ipairs(TSM.db.profile.transmogs.itemList) do
+            local existingId = existing.link and existing.link:match("item:(%d+)")
+            if existingId == newItemId then
+                existingIndex = i
+                break
+            end
         end
     end
 
@@ -912,8 +921,10 @@ function Options:AddTransmogItemFromInput()
         TSM:Print(format(L["Added %s to transmog list."], itemLink))
     end
 
-    -- Save to item history (regardless of add or update)
-    TSM.db.profile.transmogs.itemHistory[name] = {
+    -- Save to item history by itemID (regardless of add or update)
+    local saveItemId = itemLink and itemLink:match("item:(%d+)")
+    if not saveItemId then saveItemId = name end  -- fallback for items without link
+    TSM.db.profile.transmogs.itemHistory[saveItemId] = {
         price = price,
         tmogType = tmogType,
         tmogSubType = tmogSubType,

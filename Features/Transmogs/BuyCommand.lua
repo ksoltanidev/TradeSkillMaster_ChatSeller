@@ -10,16 +10,31 @@ local L = LibStub("AceLocale-3.0"):GetLocale("TradeSkillMaster_ChatSeller")
 -- Utility Functions
 -- ===================================================================================== --
 
--- Find a transmog item in the itemList by matching item name
+-- Find a transmog item in the itemList by matching itemID (falls back to name)
 function TSM:FindTransmogItemByLink(itemLink)
+    local searchId = itemLink and itemLink:match("item:(%d+)")
     local searchName = GetItemInfo(itemLink)
-    if not searchName then return nil end
+    if not searchId and not searchName then return nil end
 
-    for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
-        if item.name == searchName and item.published ~= false then
-            return item
+    -- Try matching by itemID first (most reliable)
+    if searchId then
+        for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
+            local existingId = item.link and item.link:match("item:(%d+)")
+            if existingId == searchId and item.published ~= false then
+                return item
+            end
         end
     end
+
+    -- Fall back to name match for items without links
+    if searchName then
+        for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
+            if item.name == searchName and item.published ~= false then
+                return item
+            end
+        end
+    end
+
     return nil
 end
 

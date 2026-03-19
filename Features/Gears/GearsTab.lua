@@ -236,11 +236,15 @@ function Options:AddGearItemFromInput()
         return
     end
 
-    -- Check for duplicates
-    for _, existing in ipairs(TSM.db.profile.gears.itemList) do
-        if existing.name == name then
-            TSM:Print(format(L["%s is already in the list."], itemLink or link))
-            return
+    -- Check for duplicates by itemID
+    local newGearId = itemLink and itemLink:match("item:(%d+)")
+    if newGearId then
+        for _, existing in ipairs(TSM.db.profile.gears.itemList) do
+            local existingId = existing.link and existing.link:match("item:(%d+)")
+            if existingId == newGearId then
+                TSM:Print(format(L["%s is already in the list."], itemLink or link))
+                return
+            end
         end
     end
 
