@@ -99,6 +99,9 @@ function OW:SendCoD(offerIndex)
                 pendingOffer.status = "CoD Sent"
                 local itemName = pendingOffer.itemLink or pendingOffer.itemName or "item"
                 TSM:Print(format(L["CoD sent for %s to %s."], itemName, pendingOffer.buyer))
+                -- Notify buyer that CoD has been sent
+                local priceGold = math.floor((pendingOffer.offeredPrice or 0) / 10000)
+                SendChatMessage(format(L["CoD sent! %s for %sg. It takes ~1h to arrive and you'll have 6h to accept."], itemName, priceGold), "WHISPER", nil, pendingOffer.buyer)
             end
             private.pendingCoD = nil
             OW:Refresh()

@@ -126,6 +126,7 @@ L["Gather Dupes"] = true
 L["Put Missing"] = true
 L["Gather Missing"] = true
 L["Put Dupes"] = true
+L["Retrieve Priced"] = true
 L["Gathered %d free transmogs from bank."] = true
 L["No free transmogs found in bank."] = true
 L["Gathered %d duplicate transmogs from realm bank."] = true
@@ -171,6 +172,7 @@ L["How would you like to receive %s? Trade or CoD?"] = true
 L["Mailbox must be open to send CoD."] = true
 L["Item not found in your bags."] = true
 L["CoD sent for %s to %s."] = true
+L["CoD sent! %s for %sg. It takes ~1h to arrive and you'll have 6h to accept."] = true
 L["Add Offer"] = true
 L["Cancel"] = true
 L["Please enter an item link and a buyer name."] = true
@@ -246,3 +248,12 @@ L["Display the ChatSeller shop price in the tooltip."] = true
 
 -- Search
 L["Search"] = true
+
+-- Options
+L["Automatically add players to your friend list when they use the tmog command."] = true
+
+-- Price Source
+L["ChatSeller - Item Price"] = true
+
+-- Sync Command
+L["Sync ChatSeller items to a TSM group"] = true

@@ -5,7 +5,7 @@
 
 -- Initialize addon namespace
 local TSM = select(2, ...)
-TSM = LibStub("AceAddon-3.0"):NewAddon(TSM, "TSM_ChatSeller", "AceEvent-3.0", "AceConsole-3.0")
+TSM = LibStub("AceAddon-3.0"):NewAddon(TSM, "TSM_ChatSeller", "AceEvent-3.0", "AceConsole-3.0", "AceTimer-3.0")
 
 -- Expose globally for other addons (e.g., AuctionsTab integration)
 TSM_ChatSeller = TSM
@@ -40,6 +40,7 @@ local savedDBDefaults = {
             showCategory = true,        -- Show item category (type > subtype) in tooltip
             showPrice = true,           -- Show shop price in tooltip
         },
+        bankRetrieveMinGold = 50,   -- Minimum gold threshold for Bagnon bank retrieve button
         loyalty = {
             enabled = true,             -- Enable/disable loyalty points system
             pointsPerGold = 10,         -- Points awarded per gold spent
@@ -120,11 +121,116 @@ function TSM:RegisterModule()
                 TSM:ToggleLoyaltyWindow()
             end
         },
+        {
+            key = "chatsellersync",
+            label = L["Sync ChatSeller items to a TSM group"],
+            callback = function(...) TSM:SyncToGroup(...) end,
+        },
     }
 
     TSM.tooltipOptions = { callback = "Options:LoadTooltipOptions" }
 
+    TSM.priceSources = {
+        { key = "ChatSellerPrice", label = L["ChatSeller - Item Price"], callback = "GetChatSellerPrice" },
+    }
+
     TSMAPI:NewModule(TSM)
+end
+
+-- ===================================================================================== --
+-- Price Source: ChatSellerPrice
+-- ===================================================================================== --
+
+function TSM:GetChatSellerPrice(itemLink)
+    local itemString = TSMAPI:GetItemString(itemLink)
+    if not itemString then return nil end
+    -- Search gears
+    for _, item in ipairs(TSM.db.profile.gears.itemList) do
+        if item.link then
+            local is = TSMAPI:GetItemString(item.link)
+            if is == itemString and item.price and item.price > 0 then
+                return item.price
+            end
+        end
+    end
+    -- Search transmogs
+    for _, item in ipairs(TSM.db.profile.transmogs.itemList) do
+        if item.link then
+            local is = TSMAPI:GetItemString(item.link)
+            if is == itemString and item.price and item.price > 0 then
+                return item.price
+            end
+        end
+    end
+    return nil
+end
+
+-- ===================================================================================== --
+-- Sync ChatSeller items to TSM Group
+-- ===================================================================================== --
+
+function TSM:SyncToGroup(input)
+    -- Parse input: "GroupName 50"
+    if not input or input == "" then
+        TSM:Print("Usage: /tsm chatsellersync <GroupName> <MinGold>")
+        return
+    end
+    local groupName, minGoldStr = strmatch(input, "^(%S+)%s+(%d+)$")
+    if not groupName or not minGoldStr then
+        TSM:Print("Usage: /tsm chatsellersync <GroupPath> <MinGold>")
+        TSM:Print("  Use / as separator for subgroups (e.g. Transmogs/high_tier)")
+        return
+    end
+    -- Convert / to GROUP_SEP (backtick `) for TSM group paths
+    groupName = gsub(groupName, "/", "`")
+    local minCopper = tonumber(minGoldStr) * 10000
+
+    -- Access TSM Core saved variables directly
+    local tsmAddon = LibStub("AceAddon-3.0"):GetAddon("TradeSkillMaster")
+    local tsmDB = tsmAddon.db.profile
+
+    -- 1. Clear items currently in this group (direct saved var manipulation is fine for deletion)
+    local removed = 0
+    for itemString, path in pairs(tsmDB.items) do
+        if path == groupName then
+            tsmDB.items[itemString] = nil
+            removed = removed + 1
+        end
+    end
+
+    -- 2. Collect eligible ChatSeller items into a preset list {[itemString] = groupPath}
+    local presetItems = {}
+    local skipped = 0
+    local function collectItems(itemList)
+        for _, item in ipairs(itemList) do
+            if item.link and item.price and item.price >= minCopper then
+                local is = TSMAPI:GetItemString(item.link)
+                if is then
+                    if tsmDB.items[is] then
+                        -- Item already in another group, skip
+                        skipped = skipped + 1
+                    else
+                        presetItems[is] = groupName
+                    end
+                end
+            end
+        end
+    end
+    collectItems(TSM.db.profile.gears.itemList)
+    collectItems(TSM.db.profile.transmogs.itemList)
+
+    -- 3. Use TSMAPI:CreatePresetGroups to add items + create group + refresh UI tree
+    TSMAPI:CreatePresetGroups(presetItems, nil, nil)
+
+    -- Count added items
+    local count = 0
+    for _ in pairs(presetItems) do count = count + 1 end
+
+    local msg = format("Synced %d items (>%sg) to group '%s'", count, minGoldStr, groupName)
+    if skipped > 0 then
+        msg = msg .. format(" (%d skipped, already in other groups)", skipped)
+    end
+    TSM:Print(msg)
 end
 
 -- ===================================================================================== --

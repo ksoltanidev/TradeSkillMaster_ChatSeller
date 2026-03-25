@@ -505,6 +505,42 @@ local function OnPutDupes()
     end)
 end
 
+-- Retrieve Priced: move items with ChatSellerPrice >= threshold from bank to bags
+local function OnRetrievePriced()
+    local minGold = TSM.db.profile.bankRetrieveMinGold or 50
+    local minCopper = minGold * 10000
+
+    local currentTab = GetCurrentGuildBankTab()
+    if not currentTab or currentTab == 0 then return end
+
+    local moves = {}
+    local freeBagSlots = CountFreeBagSlots()
+
+    for slot = 1, SLOTS_PER_TAB do
+        if #moves >= freeBagSlots then break end
+        local texture, count, locked = GetGuildBankItemInfo(currentTab, slot)
+        if texture and not locked then
+            local link = GetGuildBankItemLink(currentTab, slot)
+            if link and TSMAPI and TSMAPI.GetItemValue then
+                local price = TSMAPI:GetItemValue(link, "ChatSellerPrice")
+                if price and price >= minCopper then
+                    tinsert(moves, { moveType = "bankToBags", tab = currentTab, slot = slot })
+                end
+            end
+        end
+    end
+
+    if #moves == 0 then
+        TSM:Print(format("No ChatSeller items worth > %dg found in this tab.", minGold))
+        return
+    end
+
+    local moveCount = #moves
+    StartMoveQueue(moves, function()
+        TSM:Print(format("Retrieved %d ChatSeller items (>%dg) from bank.", moveCount, minGold))
+    end)
+end
+
 -- Sync Tmog: existing functionality
 local function OnSyncTmog()
     local tab = GetCurrentGuildBankTab()
@@ -551,6 +587,10 @@ local function CreateAllButtons(bagnonFrame)
     buttons.putMissing = CreateManagementButton("ChatSellerPutMissingBtn", L["Put Missing"], x, bagnonFrame, OnPutMissing)
     buttons.putDupes = CreateManagementButton("ChatSellerPutDupesBtn", L["Put Dupes"], x, bagnonFrame, OnPutDupes)
 
+    x = x + BTN_WIDTH + BTN_SPACING
+
+    buttons.retrievePriced = CreateManagementButton("ChatSellerRetrievePricedBtn", L["Retrieve Priced"], x, bagnonFrame, OnRetrievePriced)
+
     buttonsCreated = true
 end
 
@@ -567,11 +607,13 @@ local function UpdateButtonVisibility()
         buttons.syncTmog:Show()
         buttons.gatherMissing:Show()
         buttons.putDupes:Show()
+        buttons.retrievePriced:Show()
     elseif bankType == "realm" then
         buttons.gatherFree:Show()
         buttons.syncTmog:Show()
         buttons.gatherDupes:Show()
         buttons.putMissing:Show()
+        buttons.retrievePriced:Show()
     end
     -- guild bank: no buttons
 end

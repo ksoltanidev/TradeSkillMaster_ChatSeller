@@ -6,10 +6,38 @@
 local TSM = select(2, ...)
 
 -- ===================================================================================== --
+-- Message Sanitization
+-- ===================================================================================== --
+
+-- Strip leading/trailing special characters (quotes, asterisks, etc.)
+-- Players often wrap commands like *tmog set* or "tmog sets"
+-- Returns cleaned message and whether anything was stripped
+local function SanitizeMessage(msg)
+    local original = msg
+    msg = msg:match("^[%*\"'`~!@#%%%^&%(%)%-%+=%[%]{}\\/<>%.,%?_]+(.-)$") or msg
+    msg = msg:match("^(.-)[%*\"'`~!@#%%%^&%(%)%-%+=%[%]{}\\/<>%.,%?_]+$") or msg
+    msg = strtrim(msg)
+    return msg, (msg ~= strtrim(original))
+end
+
+-- Send a delayed hint that special characters aren't needed
+local function MaybeSendHint(wasStripped, sender)
+    if wasStripped then
+        TSM:ScheduleTimer(function()
+            SendChatMessage("Hint: no need for special characters around commands; just type the command directly!", "WHISPER", nil, sender)
+        end, 5)
+    end
+end
+
+-- ===================================================================================== --
 -- Chat Message Handler
 -- ===================================================================================== --
 
 function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
+    -- Strip leading/trailing special characters before processing
+    local wasStripped
+    message, wasStripped = SanitizeMessage(message)
+
     -- Get prefix (can be empty)
     local prefix = TSM.db.profile.commandPrefix or ""
     local lowerMessage = strlower(message)
@@ -41,6 +69,7 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
     if TSM.db.profile.transmogs.enabled then
         if lowerMessage == "+" or lowerMessage == "more" then
             TSM:HandleTransmogMoreCommand(sender)
+            MaybeSendHint(wasStripped, sender)
             return
         end
     end
@@ -49,6 +78,7 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
     if TSM.db.profile.loyalty.enabled then
         if strmatch(lowerMessage, loyaltyPattern) then
             TSM:HandleLoyaltyCommand(sender)
+            MaybeSendHint(wasStripped, sender)
             return
         end
     end
@@ -58,6 +88,7 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
         local refArgs = strmatch(lowerMessage, refPattern)
         if refArgs then
             TSM:HandleRefCommand(sender, strtrim(refArgs))
+            MaybeSendHint(wasStripped, sender)
             return
         end
     end
@@ -66,6 +97,7 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
     if TSM.db.profile.loyalty.enabled then
         if strmatch(lowerMessage, rankPattern) then
             TSM:HandleRankCommand(sender)
+            MaybeSendHint(wasStripped, sender)
             return
         end
     end
@@ -78,6 +110,7 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
             if #itemLinks > 0 then
                 TSM:HandlePriceCommand(sender, itemLinks)
             end
+            MaybeSendHint(wasStripped, sender)
             return
         end
     end
@@ -87,6 +120,7 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
         local gearArgs = strmatch(lowerMessage, gearPattern)
         if gearArgs then
             TSM:HandleGearCommand(sender, gearArgs)
+            MaybeSendHint(wasStripped, sender)
             return
         end
     end
@@ -95,6 +129,7 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
     if TSM.db.profile.transmogs.enabled then
         if strmatch(lowerMessage, buyPattern) then
             TSM:HandleBuyCommand(sender, message)
+            MaybeSendHint(wasStripped, sender)
             return
         end
     end
@@ -104,6 +139,7 @@ function TSM:CHAT_MSG_WHISPER(event, message, sender, ...)
         local tmogArgs = strmatch(lowerMessage, tmogPattern)
         if tmogArgs then
             TSM:HandleTransmogCommand(sender, tmogArgs)
+            MaybeSendHint(wasStripped, sender)
             return
         end
     end
